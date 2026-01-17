@@ -26,7 +26,7 @@ local SilentAimPlayersEnabled = false
 local SilentAimNPCsEnabled = false
 local UserWantsplayerAim = false
 local UserWantsNPCAim = false
-local PredictionEnabled = false
+local PredictionEnabled = true
 local HighlightEnabled = false 
 local AutoKen = false
 local ZSkillorM1= false
@@ -108,7 +108,7 @@ local AIRBORNE_STATES = {
 	[Enum.HumanoidStateType.Jumping] = false,
 	[Enum.HumanoidStateType.Freefall] = false,
 	[Enum.HumanoidStateType.FallingDown] = false,
-	[Enum.HumanoidStateType.Ragdoll] = falsw,
+	[Enum.HumanoidStateType.Ragdoll] = false,
 }
 
 local function _mergeOptions(opts)
@@ -241,8 +241,6 @@ local function getPredictedPosition(hrp, options)
 
 	return predicted
 end
-
-return getPredictedPosition
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
 	local playerGui = player:WaitForChild("PlayerGui")
