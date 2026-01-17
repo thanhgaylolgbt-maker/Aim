@@ -89,20 +89,160 @@ local function clearConnections()
 	characterConnections = {}
 end
 
-local function getPredictedPosition(hrp)
+local Workspace = workspace
+
+local DEFAULTS = {
+	PredictionEnabled = true,
+	PredictionAmount = 0.25,
+	MinWalkSpeed = 5,
+	UseMoveDirectionPreferred = true,
+	MaxPredictionDistance = 800,
+
+	-- Target / ground options
+	TargetHRP = nil,             -- HumanoidRootPart của mục tiêu (nếu có)
+	GroundCheckDistance = 4,     -- khoảng cách (studs) để raycast kiểm tra mặt đất gần mục tiêu
+	GroundOffset = 0.5,          -- offset nhỏ (studs) để đảm bảo không đặt bên dưới mặt đất mục tiêu
+}
+
+local AIRBORNE_STATES = {
+	[Enum.HumanoidStateType.Jumping] = false,
+	[Enum.HumanoidStateType.Freefall] = false,
+	[Enum.HumanoidStateType.FallingDown] = false,
+	[Enum.HumanoidStateType.Ragdoll] = falsw,
+}
+
+local function _mergeOptions(opts)
+	local t = {}
+	for k, v in pairs(DEFAULTS) do t[k] = v end
+	if type(opts) == "table" then
+		for k, v in pairs(opts) do t[k] = v end
+	end
+	return t
+end
+
+local function _clamp(n, a, b)
+	return math.max(a, math.min(b, n))
+end
+
+local function _isTargetNearGround(targetHRP, checkDistance)
+	if not targetHRP then return false end
+	-- If target has a humanoid and it's not in an airborne state, treat as on-ground
+	local parent = targetHRP.Parent
+	if parent then
+		local th = parent:FindFirstChildOfClass("Humanoid")
+		if th then
+			local st = th:GetState()
+			if not AIRBORNE_STATES[st] then
+				return true
+			end
+		end
+	end
+	-- Otherwise do a raycast down from target to check ground within checkDistance
+	local rayParams = RaycastParams.new()
+	rayParams.FilterDescendantsInstances = { targetHRP.Parent } -- ignore the target's character
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+	local origin = targetHRP.Position
+	local direction = Vector3.new(0, - (checkDistance + 0.1), 0)
+	local result = Workspace:Raycast(origin, direction, rayParams)
+	return result ~= nil
+end
+
+local function getPredictedPosition(hrp, options)
 	if not hrp then return nil end
 
-	local humanoid = hrp.Parent:FindFirstChildOfClass("Humanoid")
+	local opts = _mergeOptions(options)
+	local pos = hrp.Position
+
+	local parent = hrp.Parent
+	local humanoid = parent and parent:FindFirstChildOfClass("Humanoid")
+
+	-- No humanoid fallback: basic velocity-based prediction
 	if not humanoid then
-		return hrp.Position
+		if not opts.PredictionEnabled then
+			return pos
+		end
+		local amt = _clamp(opts.PredictionAmount, 0, 5)
+		local predicted = pos + hrp.Velocity * amt
+		if opts.MaxPredictionDistance then
+			local disp = predicted - pos
+			if disp.Magnitude > opts.MaxPredictionDistance then
+				predicted = pos + disp.Unit * opts.MaxPredictionDistance
+			end
+		end
+		return predicted
 	end
 
-	if not PredictionEnabled or humanoid.WalkSpeed < 5 then
-		return hrp.Position
+	if not opts.PredictionEnabled or humanoid.WalkSpeed < opts.MinWalkSpeed then
+		return pos
 	end
 
-	return hrp.Position + (hrp.Velocity * PredictionAmount)
+	local state = humanoid:GetState()
+
+	-- If airborne states: special handling
+	if AIRBORNE_STATES[state] then
+		-- Horizontal projection only (we'll decide vertical behavior based on target)
+		local horizVel = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
+		local amt = _clamp(opts.PredictionAmount, 0, 5)
+		local verticalComponent = _clamp(hrp.Velocity.Y, -30, 30) * 0.5 * amt -- negative when falling
+
+		-- Determine if target is provided and is on/near ground
+		local targetHRP = opts.TargetHRP
+		local targetNearGround = _isTargetNearGround(targetHRP, opts.GroundCheckDistance)
+		local targetGroundY = targetHRP and targetHRP.Position.Y or nil
+
+		local predicted = pos + horizVel * amt + Vector3.new(0, verticalComponent, 0)
+
+		if targetHRP and targetNearGround and targetGroundY and targetGroundY <= pos.Y then
+			-- Nếu mục tiêu ở dưới và gần mặt đất: không dự đoán xuống phía dưới mục tiêu.
+			-- 1) loại bỏ phần dự đoán xuống (không cho vertical âm)
+			local verticalSafe = math.max(0, verticalComponent)
+			predicted = pos + horizVel * amt + Vector3.new(0, verticalSafe, 0)
+
+			-- 2) đảm bảo predicted.Y không nằm dưới mặt đất mục tiêu + offset
+			local minY = targetGroundY + opts.GroundOffset
+			if predicted.Y < minY then
+				predicted = Vector3.new(predicted.X, minY, predicted.Z)
+			end
+		end
+
+		-- clamp distance if requested
+		if opts.MaxPredictionDistance then
+			local disp = predicted - pos
+			if disp.Magnitude > opts.MaxPredictionDistance then
+				predicted = pos + disp.Unit * opts.MaxPredictionDistance
+			end
+		end
+
+		return predicted
+	end
+
+	-- Grounded / walking: prefer MoveDirection * WalkSpeed
+	local moveDir = humanoid.MoveDirection or Vector3.new(0, 0, 0)
+	local speed = humanoid.WalkSpeed or hrp.Velocity.Magnitude
+	local amt = _clamp(opts.PredictionAmount, 0, 5)
+	local predicted
+
+	if opts.UseMoveDirectionPreferred and moveDir.Magnitude > 0.01 then
+		local horizontalPrediction = Vector3.new(moveDir.X, 0, moveDir.Z) * speed * amt
+		local verticalPrediction = Vector3.new(0, _clamp(hrp.Velocity.Y, -10, 10) * 0.25 * amt, 0)
+		predicted = pos + horizontalPrediction + verticalPrediction
+	else
+		local horizVel = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z)
+		local verticalPrediction = Vector3.new(0, _clamp(hrp.Velocity.Y, -10, 10) * 0.25 * amt, 0)
+		predicted = pos + horizVel * amt + verticalPrediction
+	end
+
+	if opts.MaxPredictionDistance then
+		local disp = predicted - pos
+		if disp.Magnitude > opts.MaxPredictionDistance then
+			predicted = pos + disp.Unit * opts.MaxPredictionDistance
+		end
+	end
+
+	return predicted
 end
+
+return getPredictedPosition
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
 	local playerGui = player:WaitForChild("PlayerGui")
