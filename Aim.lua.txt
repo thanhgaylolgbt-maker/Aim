@@ -89,6 +89,7 @@ local function clearConnections()
 	characterConnections = {}
 end
 
+-- Improved prediction: interception-based solver with robust fallback
 local function getPredictedPosition(hrp)
 	if not hrp then return nil end
 
@@ -96,27 +97,80 @@ local function getPredictedPosition(hrp)
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if not hum then return hrp.Position end
 
-	-- ❌ KHÔNG predict khi đứng yên / cast skill
+	-- ❌ DO NOT predict when user disabled or target is essentially stationary / low speed
 	if not PredictionEnabled
-	or hum.MoveDirection.Magnitude < 0.1
+	or (hum.MoveDirection and hum.MoveDirection.Magnitude < 0.1)
 	or hum.WalkSpeed < 5 then
 		return hrp.Position
 	end
 
-	-- 🎯 BASE
-	local moveDir = hum.MoveDirection
-	local speed = hum.WalkSpeed
-	local vel = hrp.AssemblyLinearVelocity
+	-- Gather basic values
+	local shooterPos = (camera and camera.CFrame and camera.CFrame.Position) or workspace.CurrentCamera.CFrame.Position
+	local targetPos = hrp.Position
+	local targetVel = hrp.AssemblyLinearVelocity or Vector3.new()
+	local moveDir = hum.MoveDirection or Vector3.new()
+	-- Use the larger of WalkSpeed or current velocity magnitude as a proxy for movement speed
+	local speed = math.max(0.1, hum.WalkSpeed or 0, targetVel.Magnitude)
 
-	-- ⚡ TÍNH THỜI GIAN ĐẠN (ước lượng)
-	local distance = (hrp.Position - camera.CFrame.Position).Magnitude
-	local time = distance / 300 -- 300 = tốc độ skill (chuẩn Blox Fruits)
+	-- Projectile speed baseline (tweak with PredictionAmount)
+	-- Default 300 (previous behavior). PredictionAmount now scales projectile speed estimation:
+	-- higher PredictionAmount -> assumes faster projectile (shorter travel time).
+	local projSpeed = 300 * (PredictionAmount or 1)
 
-	-- 🎯 AIM SIÊU CHUẨN
-	local predicted =
-		hrp.Position
-		+ (moveDir * speed * time)
-		+ (vel * time * 0.12)
+	-- Relative pos from shooter to target
+	local relPos = targetPos - shooterPos
+
+	-- Solve interception: |targetPos + v*t - shooterPos| = projSpeed * t
+	-- => (v·v - s^2) t^2 + 2 * relPos·v * t + relPos·relPos = 0
+	local a = targetVel:Dot(targetVel) - projSpeed * projSpeed
+	local b = 2 * relPos:Dot(targetVel)
+	local c = relPos:Dot(relPos)
+
+	local t = nil
+	-- Quadratic solve with numeric safeguards
+	if math.abs(a) < 1e-6 then
+		-- Degenerate to linear equation b*t + c = 0
+		if math.abs(b) > 1e-6 then
+			local tt = -c / b
+			if tt > 0 then t = tt end
+		end
+	else
+		local disc = b * b - 4 * a * c
+		if disc >= 0 then
+			local sqrtD = math.sqrt(disc)
+			local t1 = (-b - sqrtD) / (2 * a)
+			local t2 = (-b + sqrtD) / (2 * a)
+			-- pick smallest positive root (earliest intercept)
+			if t1 > 0 and t2 > 0 then
+				t = math.min(t1, t2)
+			elseif t1 > 0 then
+				t = t1
+			elseif t2 > 0 then
+				t = t2
+			end
+		end
+	end
+
+	-- Fallback: linear predictive estimate if interception solver failed or gives unrealistic t
+	if not t or t <= 0 or t > 5 then
+		-- Estimate time by distance / projSpeed clamped to reasonable window
+		local estTime = relPos.Magnitude / math.max(1, projSpeed)
+		-- clamp to [0.05, 2]s to avoid extreme overshoots
+		t = math.clamp(estTime, 0.05, 2)
+	end
+
+	-- Combine velocity prediction and movement-direction heuristic.
+	-- The moveDir term helps when AssemblyLinearVelocity may be noisy or low-sampled.
+	-- Tune contribution of moveDir with a small factor (0.2..0.5). We incorporate PredictionAmount to let users push more aggressive lead.
+	local moveFactor = 0.3 * (PredictionAmount or 1)
+	moveFactor = math.clamp(moveFactor, 0, 2)
+
+	local predicted = targetPos + targetVel * t + (moveDir * speed * t * moveFactor)
+
+	-- Optional: if predicted is extremely far from target (due to noisy velocity), fallback to shorter lead
+	if (predicted - targetPos).Magnitude > math.max(50, relPos.Magnitude * 0.8) then
+		predicted = targetPos + targetVel * math.clamp(t * 0.6, 0, t)
+	end
 
 	return predicted
 end
@@ -933,7 +987,8 @@ ignoreList.BackgroundTransparency = 1
 
 local function refreshPlayerLists()
 	for _, v in ipairs(pinList:GetChildren()) do
-		if v:IsA("TextButton") then v:Destroy() end
+		if v:IsA("TextButton") then v:Destroy()
+end
 	end
 	for _, v in ipairs(ignoreList:GetChildren()) do
 		if v:IsA("TextButton") then v:Destroy() end
