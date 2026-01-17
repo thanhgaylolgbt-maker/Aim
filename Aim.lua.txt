@@ -92,33 +92,16 @@ end
 local function getPredictedPosition(hrp)
 	if not hrp then return nil end
 
-	local char = hrp.Parent
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if not hum then return hrp.Position end
-
-	-- ❌ KHÔNG predict khi đứng yên / cast skill
-	if not PredictionEnabled
-	or hum.MoveDirection.Magnitude < 0.1
-	or hum.WalkSpeed < 5 then
+	local humanoid = hrp.Parent:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
 		return hrp.Position
 	end
 
-	-- 🎯 BASE
-	local moveDir = hum.MoveDirection
-	local speed = hum.WalkSpeed
-	local vel = hrp.AssemblyLinearVelocity
+	if not PredictionEnabled or humanoid.WalkSpeed < 5 then
+		return hrp.Position
+	end
 
-	-- ⚡ TÍNH THỜI GIAN ĐẠN (ước lượng)
-	local distance = (hrp.Position - camera.CFrame.Position).Magnitude
-	local time = distance / 300 -- 300 = tốc độ skill (chuẩn Blox Fruits)
-
-	-- 🎯 AIM SIÊU CHUẨN
-	local predicted =
-		hrp.Position
-		+ (moveDir * speed * time)
-		+ (vel * time * 0.12)
-
-	return predicted
+	return hrp.Position + (hrp.Velocity * PredictionAmount)
 end
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
