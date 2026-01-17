@@ -82,15 +82,6 @@ local function getHRP(model)
 	return model.HumanoidRootPart
 end
 
-local animator = humanoid:FindFirstChildOfClass("Animator")
-if animator then
-	for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-		if track.Priority == Enum.AnimationPriority.Action then
-			return hrp.Position
-		end
-	end
-end
-
 local function clearConnections()
 	for _, conn in ipairs(characterConnections) do
 		pcall(function() conn:Disconnect() end)
@@ -106,6 +97,18 @@ local function getPredictedPosition(hrp)
 	if not humanoid then
 		return hrp.Position
 	end
+
+local humanoid = hrp.Parent:FindFirstChildOfClass("Humanoid")
+if humanoid then
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if animator then
+		for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+			if track.Priority == Enum.AnimationPriority.Action then
+				return hrp.Position
+			end
+		end
+	end
+end
 
 	-- ❌ Không prediction khi:
 	-- - tắt prediction
