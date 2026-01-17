@@ -166,8 +166,6 @@ local function getPredictedPosition(hrp, options)
 	return predicted
 end
 
-return getPredictedPosition
-
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
 	local playerGui = player:WaitForChild("PlayerGui")
     if playerGui:FindFirstChild(name .. "MiniToggleGuiS") then
