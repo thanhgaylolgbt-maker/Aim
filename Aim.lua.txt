@@ -89,23 +89,53 @@ local function clearConnections()
 	characterConnections = {}
 end
 
-local function getPredictedPosition(hrp)
-	if not hrp then return nil end
+local LastVelocity = {}
 
-	local humanoid = hrp.Parent:FindFirstChildOfClass("Humanoid")
-	if not humanoid or humanoid.Health <= 0 then -- Kiểm tra cả máu
-		return hrp.Position
+local function getPredictedPosition(targetHrp)
+	if not targetHrp or not Settings.PredictionEnabled then 
+		return targetHrp and targetHrp.Position 
 	end
 
-	-- Nếu không bật dự đoán hoặc đi quá chậm
-	if not PredictionEnabled or humanoid.WalkSpeed < 5 then
-		return hrp.Position
+	local humanoid = targetHrp.Parent:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then
+		return targetHrp.Position
 	end
 
-	-- Lấy vận tốc vật lý mới nhất
-	local velocity = hrp.AssemblyLinearVelocity
+	-- Địch đứng yên → không predict
+	if humanoid.MoveDirection.Magnitude < 0.05 then
+		return targetHrp.Position
+	end
 
-	return hrp.Position + (velocity * PredictionAmount)
+	local velocity = targetHrp.AssemblyLinearVelocity
+
+	-- Anti-SpeedHack
+	if velocity.Magnitude > Settings.VelocityThreshold then
+		velocity = velocity.Unit * Settings.VelocityThreshold
+	end
+
+	-- Anti-jitter
+	if velocity.Magnitude < 1 then
+		velocity = LastVelocity[targetHrp] or Vector3.zero
+	else
+		LastVelocity[targetHrp] = velocity
+	end
+
+	local predictionAmount
+	if Settings.AutoPrediction then
+		local ping = getPing()
+		predictionAmount = math.clamp(ping + 0.037, 0.05, 0.25)
+	else
+		predictionAmount = Settings.ManualPrediction
+	end
+
+	local predictedPos = targetHrp.Position + (velocity * predictionAmount)
+
+	-- Giảm rơi quá mạnh
+	if velocity.Y < -30 then
+		predictedPos -= Vector3.new(0, velocity.Y * 0.5 * predictionAmount, 0)
+	end
+
+	return predictedPos
 end
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
