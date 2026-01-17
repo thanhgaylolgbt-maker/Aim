@@ -89,50 +89,25 @@ local function clearConnections()
 	characterConnections = {}
 end
 
--- Cache velocity để chống jitter
-local LastVelocity = {}
-
 local function getPredictedPosition(hrp)
-	if not hrp or not hrp.Parent then 
-		return nil 
-	end
+	if not hrp then return nil end
 
 	local humanoid = hrp.Parent:FindFirstChildOfClass("Humanoid")
-	if not humanoid or humanoid.Health <= 0 then
+	if not humanoid or humanoid.Health <= 0 then -- Kiểm tra cả máu
 		return hrp.Position
 	end
 
-	-- Không prediction khi tắt hoặc target gần như đứng yên
-	if not PredictionEnabled or humanoid.MoveDirection.Magnitude < 0.05 then
+	-- Nếu không bật dự đoán hoặc đi quá chậm
+	if not PredictionEnabled or humanoid.WalkSpeed < 5 then
 		return hrp.Position
 	end
 
-	-- Lấy velocity vật lý
+	-- Lấy vận tốc vật lý mới nhất
 	local velocity = hrp.AssemblyLinearVelocity
-	local speed = velocity.Magnitude
 
-	-- Lọc velocity lỗi / jitter
-	if speed < 1 then
-		velocity = LastVelocity[hrp] or Vector3.zero
-	else
-		LastVelocity[hrp] = velocity
-	end
-
-	-- Khoảng cách tới camera
-	local distance = (camera.CFrame.Position - hrp.Position).Magnitude
-
-	-- Prediction scale theo khoảng cách (xa → dự đoán nhiều hơn)
-	local distanceFactor = math.clamp(distance / 100, 0.6, 1.4)
-
-	-- Prediction scale theo tốc độ
-	local speedFactor = math.clamp(speed / humanoid.WalkSpeed, 0.8, 1.5)
-
-	-- Prediction cuối
-	local finalPrediction = PredictionAmount * distanceFactor * speedFactor
-	finalPrediction = math.clamp(finalPrediction, 0.01, 0.25)
-
-	return hrp.Position + (velocity * finalPrediction)
+	return hrp.Position + (velocity * PredictionAmount)
 end
+
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
 	local playerGui = player:WaitForChild("PlayerGui")
