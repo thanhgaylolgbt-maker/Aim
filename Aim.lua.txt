@@ -93,32 +93,30 @@ local function getPredictedPosition(hrp)
 	if not hrp then return nil end
 
 	local char = hrp.Parent
-	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
-		return hrp.Position
-	end
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not hum then return hrp.Position end
 
-	-- ❌ Không prediction khi:
-	-- - tắt prediction
-	-- - đứng lại / đang cast skill
+	-- ❌ KHÔNG predict khi đứng yên / cast skill
 	if not PredictionEnabled
-	or humanoid.MoveDirection.Magnitude < 0.1
-	or humanoid.WalkSpeed < 5 then
+	or hum.MoveDirection.Magnitude < 0.1
+	or hum.WalkSpeed < 5 then
 		return hrp.Position
 	end
 
-	-- ===== PREDICTION LOGIC =====
-	local moveDir = humanoid.MoveDirection
-	local speed   = humanoid.WalkSpeed
+	-- 🎯 BASE
+	local moveDir = hum.MoveDirection
+	local speed = hum.WalkSpeed
+	local vel = hrp.AssemblyLinearVelocity
 
-	-- base prediction theo hướng di chuyển (CHÍNH)
-	local predicted = hrp.Position + (moveDir * speed * PredictionAmount)
+	-- ⚡ TÍNH THỜI GIAN ĐẠN (ước lượng)
+	local distance = (hrp.Position - camera.CFrame.Position).Magnitude
+	local time = distance / 300 -- 300 = tốc độ skill (chuẩn Blox Fruits)
 
-	-- refine nhẹ bằng velocity (chỉ khi velocity hợp lệ)
-	local vel = hrp.Velocity
-	if vel.Magnitude > 2 then
-		predicted += vel * (PredictionAmount * 0.15)
-	end
+	-- 🎯 AIM SIÊU CHUẨN
+	local predicted =
+		hrp.Position
+		+ (moveDir * speed * time)
+		+ (vel * time * 0.12)
 
 	return predicted
 end
@@ -472,7 +470,7 @@ spawn(function()
         OldHook = hookmetamethod(game, "__namecall", function(self, V1, V2, ...)
             local Method = (getnamecallmethod and getnamecallmethod():lower()) or ""
 
-            if tostring(self) == "RemoteEvent" and Method == "fireserver" then
+            if self:IsA("RemoteEvent") and Method == "fireserver" then
 
                 if typeof(V1) == "Vector3" then
                     if SilentAimPlayersEnabled and PlayersPosition then
