@@ -89,20 +89,84 @@ local function clearConnections()
 	characterConnections = {}
 end
 
-local function getPredictedPosition(hrp)
-	if not hrp then return nil end
+-- Improved getPredictedPosition
+-- Usage:
+--   getPredictedPosition(hrp) -- uses globals PredictionEnabled/PredictionAmount if present
+--   getPredictedPosition(hrp, { enabled = true, time = 0.12, horizontalOnly = true, minWalkSpeed = 5 })
+local function getPredictedPosition(hrp, options)
+	if not hrp then
+		return nil
+	end
 
-	local humanoid = hrp.Parent:FindFirstChildOfClass("Humanoid")
+	options = options or {}
+	-- Respect explicit option, then global, then defaults
+	local enabled = (options.enabled ~= nil) and options.enabled or (type(PredictionEnabled) == "boolean" and PredictionEnabled or true)
+	local time = (options.time ~= nil) and options.time or (type(PredictionAmount) == "number" and PredictionAmount or 0.12)
+	local horizontalOnly = (options.horizontalOnly ~= nil) and options.horizontalOnly or true
+	local minWalkSpeed = (options.minWalkSpeed ~= nil) and options.minWalkSpeed or 5
+	local minDelta = (options.minDelta ~= nil) and options.minDelta or 0.01
+
+	-- Basic sanity: must have a parent to find Humanoid
+	local parent = hrp.Parent
+	if not parent then
+		return hrp.Position
+	end
+
+	local humanoid = parent:FindFirstChildOfClass("Humanoid")
 	if not humanoid then
 		return hrp.Position
 	end
 
-	if not PredictionEnabled or humanoid.WalkSpeed < 5 then
+	-- Don't predict if prediction disabled or not moving fast enough
+	if not enabled or humanoid.WalkSpeed < minWalkSpeed then
 		return hrp.Position
 	end
 
-	return hrp.Position + (hrp.Velocity * PredictionAmount)
+	-- Avoid prediction for states where movement is not normal walking/running
+	local okStates = {
+		[Enum.HumanoidStateType.Running] = true,
+		[Enum.HumanoidStateType.RunningNoPhysics] = true,
+		[Enum.HumanoidStateType.GettingUp] = true, -- optional
+		[Enum.HumanoidStateType.Swimming] = true,  -- if you want to predict while swimming remove it or add logic
+	}
+	local state = humanoid:GetState()
+	if not okStates[state] then
+		-- For most non-standard states (Dead, Seated, PlatformStanding, FallingDown, etc.) return current
+		return hrp.Position
+	end
+
+	-- Get a reliable velocity: hrp.Velocity is standard, try AssemblyLinearVelocity as a fallback
+	local vel = hrp.Velocity or hrp.AssemblyLinearVelocity or Vector3.new(0, 0, 0)
+
+	-- Optionally only predict horizontally to ignore jumps/falls
+	if horizontalOnly then
+		vel = Vector3.new(vel.X, 0, vel.Z)
+	end
+
+	-- If velocity is tiny, fall back to MoveDirection * WalkSpeed (useful when velocity isn't reliable)
+	if vel.Magnitude <= 0.001 then
+		local moveDir = humanoid.MoveDirection
+		if moveDir and moveDir.Magnitude > 0 then
+			local fallbackVel = moveDir.Unit * humanoid.WalkSpeed
+			if horizontalOnly then
+				fallbackVel = Vector3.new(fallbackVel.X, 0, fallbackVel.Z)
+			end
+			vel = fallbackVel
+		end
+	end
+
+	-- Predict ahead by `time` seconds
+	local predicted = hrp.Position + vel * time
+
+	-- If the predicted delta is effectively zero, return current position (avoid jitter)
+	if (predicted - hrp.Position).Magnitude < minDelta then
+		return hrp.Position
+	end
+
+	return predicted
 end
+
+return getPredictedPosition
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
 	local playerGui = player:WaitForChild("PlayerGui")
