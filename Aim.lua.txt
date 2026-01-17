@@ -108,7 +108,6 @@ local function getPredictedPosition(hrp)
 	return hrp.Position + (velocity * PredictionAmount)
 end
 
-
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
 	local playerGui = player:WaitForChild("PlayerGui")
     if playerGui:FindFirstChild(name .. "MiniToggleGuiS") then
@@ -458,7 +457,7 @@ spawn(function()
         OldHook = hookmetamethod(game, "__namecall", function(self, V1, V2, ...)
             local Method = (getnamecallmethod and getnamecallmethod():lower()) or ""
 
-            if self:IsA("RemoteEvent") and Method == "fireserver" then
+            if tostring(self) == "RemoteEvent" and Method == "fireserver" then
 
                 if typeof(V1) == "Vector3" then
                     if SilentAimPlayersEnabled and PlayersPosition then
