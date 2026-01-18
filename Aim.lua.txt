@@ -60,7 +60,7 @@ local Skills = {"X"}
 local Booms = {"TAP"}
 
 local PredictionAmount = 1
-local maxRange = 1000
+local maxRange = 800
 
 local BasePrediction = 0.17      -- Prediction gốc
 local MinPrediction = 0.08
@@ -85,15 +85,14 @@ end
 local MAX_AIM_DISTANCE = 800
 
 local function isInAimDistance(plr)
-    if not plr.Character then return false end
+	if not plr or not plr.Character then return false end
 
-    local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
-    local myHRP = Player.Character
-        and Player.Character:FindFirstChild("HumanoidRootPart")
+	local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+	local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 
-    if not hrp or not myHRP then return false end
+	if not hrp or not myHRP then return false end
 
-    return (hrp.Position - myHRP.Position).Magnitude <= MAX_AIM_DISTANCE
+	return (hrp.Position - myHRP.Position).Magnitude <= MAX_AIM_DISTANCE
 end
 
 local function getDynamicPrediction(hrp)
@@ -106,59 +105,17 @@ local function getDynamicPrediction(hrp)
 	return math.clamp(prediction, MinPrediction, MaxPrediction)
 end
 
-local function getAimTarget()
-    -- ===== CÓ PIN =====
-    if PinnedPlayer then
-        -- Nếu pin bị ignore → coi như không aim
-        if IgnoredPlayers[PinnedPlayer.Name] then
-            return nil
-        end
-
-        -- Pin trong tầm → AIM PIN
-        if isInAimDistance(PinnedPlayer) then
-            return PinnedPlayer
-        end
-
-        -- Pin ngoài tầm → KHÔNG AIM AI
-        return nil
-    end
-
-    -- ===== KHÔNG PIN → AIM BÌNH THƯỜNG =====
-    local closestPlayer = nil
-    local closestDist = math.huge
-
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= Player
-        and not IgnoredPlayers[plr.Name]
-        and isInAimDistance(plr) then
-
-            local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-            local myHRP = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-
-            if hrp and myHRP then
-                local dist = (hrp.Position - myHRP.Position).Magnitude
-                if dist < closestDist then
-                    closestDist = dist
-                    closestPlayer = plr
-                end
-            end
-        end
-    end
-
-    return closestPlayer
-end
-
 --------------------------------------------------
 -- PIN / IGNORE FUNCTIONS
 --------------------------------------------------
 local function togglePinPlayer(plr)
 	if PinnedPlayer == plr then
 		PinnedPlayer = nil
-		Selectedplayer = nil
 	else
 		PinnedPlayer = plr
-		Selectedplayer = plr
 	end
+	Selectedplayer = nil
+	refreshPlayerLists()
 end
 
 local function toggleIgnorePlayer(name)
@@ -166,8 +123,10 @@ local function toggleIgnorePlayer(name)
 
 	if PinnedPlayer and PinnedPlayer.Name == name then
 		PinnedPlayer = nil
-		Selectedplayer = nil
 	end
+
+	Selectedplayer = nil
+	refreshPlayerLists()
 end
 
 local function getHRP(model)
@@ -500,7 +459,7 @@ local function startRenderLoop()
         local lookTargetPos = nil
 
         if SilentAimPlayersEnabled then
-            local targetplayer = Selectedplayer or getClosestplayer(lpHRP)
+            local targetplayer = getClosestplayer(lpHRP)
             if targetplayer and targetplayer ~= player and targetplayer.Character then
                 playersaimbot = targetplayer.Name
                 PlayerTarget = targetplayer.Character
@@ -1157,4 +1116,4 @@ RunService.RenderStepped:Connect(function()
     TargetInfoFrame.Visible = false
 end)
 
-return SilentAimModule
+return SilentAimModuleẻ
