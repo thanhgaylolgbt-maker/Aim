@@ -1019,6 +1019,7 @@ refreshPlayerLists = function()
 			local state = (PinnedPlayer == plr and "PIN") or nil
 			local btn = createPlayerButton(pinList, plr.Name, pinY, function()
 				togglePinPlayer(plr)
+task.defer(refreshPlayerLists)
 			end, state)
 
 			if PinnedPlayer == plr then
@@ -1030,6 +1031,7 @@ refreshPlayerLists = function()
 			local state2 = IgnoredPlayers[plr.Name] and "IGN"
 			local btn2 = createPlayerButton(ignoreList, plr.Name, ignoreY, function()
 				toggleIgnorePlayer(plr.Name)
+task.defer(refreshPlayerLists)
 			end, state2)
 
 			if IgnoredPlayers[plr.Name] then
