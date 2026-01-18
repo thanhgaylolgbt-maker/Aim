@@ -1002,7 +1002,7 @@ Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0,6)
 
 local titlePin = Instance.new("TextLabel", AimMenuFrame)
 titlePin.Size = UDim2.new(1,0,0,24)
-titlePin.Text = "AIM PIN (tap to lock)"
+titlePin.Text = "AIM PIN"
 titlePin.TextColor3 = Color3.new(1,1,1)
 titlePin.Font = Enum.Font.GothamBold
 titlePin.TextScaled = true
@@ -1021,7 +1021,7 @@ Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0,6)
 
 local pinList = Instance.new("ScrollingFrame", AimMenuFrame)
 pinList.Position = UDim2.new(0,5,0,60)
-pinList.Size = UDim2.new(1,-10,0,72)
+pinList.Size = UDim2.new(1,-10,0,96)
 pinList.CanvasSize = UDim2.new(0,0,0,0)
 pinList.ScrollBarImageTransparency = 0.5
 pinList.BackgroundTransparency = 1
@@ -1037,7 +1037,7 @@ titleIgnore.BackgroundTransparency = 1
 
 local ignoreList = Instance.new("ScrollingFrame", AimMenuFrame)
 ignoreList.Position = UDim2.new(0,5,0,200)
-ignoreList.Size = UDim2.new(1,-10,0,72)
+ignoreList.Size = UDim2.new(1,-10,0,96)
 ignoreList.CanvasSize = UDim2.new(0,0,0,0)
 ignoreList.ScrollBarImageTransparency = 0.5
 ignoreList.BackgroundTransparency = 1
