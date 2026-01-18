@@ -349,30 +349,29 @@ local function isEnemy(targetplayer)
 end
 
 local function getClosestplayer(lpHRP)
-	-- ===== ƯU TIÊN PIN =====
+	-- ===== CÓ PIN → ƯU TIÊN PIN =====
 	if PinnedPlayer then
-		if IgnoredPlayers[PinnedPlayer.Name] then
-			return nil
+		if not IgnoredPlayers[PinnedPlayer.Name]
+		and PinnedPlayer.Character then
+
+			local hum = PinnedPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+			local hrp = getHRP(PinnedPlayer.Character)
+
+			if hum and hum.Health > 0 and hrp then
+				if isInAimDistance(PinnedPlayer) then
+					return PinnedPlayer
+				else
+					-- PIN NGOÀI TẦM → KHÔNG AIM AI
+					return nil
+				end
+			end
 		end
 
-		if not PinnedPlayer.Character then
-			return nil
-		end
-
-		local hum = PinnedPlayer.Character:FindFirstChildWhichIsA("Humanoid")
-		if not hum or hum.Health <= 0 then
-			return nil
-		end
-
-		if isInAimDistance(PinnedPlayer) then
-			return PinnedPlayer
-		end
-
-		-- ❌ PIN NGOÀI TẦM → KHÔNG AIM AI
-		return nil
+		-- PIN KHÔNG HỢP LỆ → HUỶ PIN
+		PinnedPlayer = nil
 	end
 
-	-- ===== KHÔNG PIN → AIM BÌNH THƯỜNG =====
+	-- ===== KHÔNG PIN → AIM NGƯỜI GẦN NHẤT =====
 	local closest = nil
 	local closestDist = math.huge
 
@@ -382,14 +381,14 @@ local function getClosestplayer(lpHRP)
 		and isEnemy(pl)
 		and pl.Character then
 
-			if isInAimDistance(pl) then
-				local hrp = getHRP(pl.Character)
-				if hrp then
-					local dist = (hrp.Position - lpHRP.Position).Magnitude
-					if dist < closestDist then
-						closestDist = dist
-						closest = pl
-					end
+			local hrp = getHRP(pl.Character)
+			local hum = pl.Character:FindFirstChildWhichIsA("Humanoid")
+
+			if hrp and hum and hum.Health > 0 and isInAimDistance(pl) then
+				local dist = (hrp.Position - lpHRP.Position).Magnitude
+				if dist < closestDist then
+					closestDist = dist
+					closest = pl
 				end
 			end
 		end
@@ -1051,52 +1050,34 @@ refreshPlayerLists = function()
 		if v:IsA("TextButton") then v:Destroy() end
 	end
 
-	local pinned, ignored, normal = {}, {}, {}
+	local pinY, ignoreY = 0, 0
 	local filter = string.lower(searchBox.Text)
 
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= player
-		and string.find(string.lower(plr.Name), filter, 1, true) then
+		if plr ~= player and string.find(string.lower(plr.Name), filter, 1, true) then
+			
+			-- PIN
+			local state = (PinnedPlayer == plr and "PIN") or nil
+			local btn = createPlayerButton(pinList, plr.Name, pinY, function()
+				togglePinPlayer(plr)
+			end, state)
 
-			if plr == PinnedPlayer then
-				table.insert(pinned, plr)
-			elseif IgnoredPlayers[plr.Name] then
-				table.insert(ignored, plr)
-			else
-				table.insert(normal, plr)
+			if PinnedPlayer == plr then
+				btn.BackgroundColor3 = Color3.fromRGB(60,180,60)
 			end
+			pinY += 24
+
+			-- IGNORE
+			local state2 = IgnoredPlayers[plr.Name] and "IGN"
+			local btn2 = createPlayerButton(ignoreList, plr.Name, ignoreY, function()
+				toggleIgnorePlayer(plr.Name)
+			end, state2)
+
+			if IgnoredPlayers[plr.Name] then
+				btn2.BackgroundColor3 = Color3.fromRGB(180,60,60)
+			end
+			ignoreY += 24
 		end
-	end
-
-	local pinY, ignoreY = 0, 0
-
-	-- PIN đứng đầu
-	for _, plr in ipairs(pinned) do
-		local btn = createPlayerButton(pinList, plr.Name, pinY, function()
-			togglePinPlayer(plr)
-			refreshPlayerLists()
-		end, "PIN")
-		btn.BackgroundColor3 = Color3.fromRGB(60,180,60)
-		pinY += 24
-	end
-
-	-- PLAYER THƯỜNG
-	for _, plr in ipairs(normal) do
-		createPlayerButton(pinList, plr.Name, pinY, function()
-			togglePinPlayer(plr)
-			refreshPlayerLists()
-		end)
-		pinY += 24
-	end
-
-	-- IGNORE đứng đầu IGNORE list
-	for _, plr in ipairs(ignored) do
-		local btn = createPlayerButton(ignoreList, plr.Name, ignoreY, function()
-			toggleIgnorePlayer(plr.Name)
-			refreshPlayerLists()
-		end, "IGN")
-		btn.BackgroundColor3 = Color3.fromRGB(180,60,60)
-		ignoreY += 24
 	end
 
 	pinList.CanvasSize = UDim2.new(0,0,0,pinY)
