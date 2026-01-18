@@ -941,7 +941,7 @@ local AimMenu = Instance.new("ScreenGui", player.PlayerGui)
 AimMenu.Enabled = false
 AimMenu.ResetOnSpawn = false
 
-local AimMenuFrame = Instance.new("Frame", AimMenu)
+if not AimMenu.Enabled then return end
 AimMenuFrame.Size = UDim2.new(0,260,0,300)
 AimMenuFrame.Position = UDim2.new(0,60,0,60)
 AimMenuFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
@@ -1002,62 +1002,95 @@ ignoreList.ScrollBarImageTransparency = 0.5
 ignoreList.BackgroundTransparency = 1
 
 refreshPlayerLists = function()
-	for _, v in ipairs(pinList:GetChildren()) do
-		if v:IsA("TextButton") then v:Destroy() end
-	end
-	for _, v in ipairs(ignoreList:GetChildren()) do
-		if v:IsA("TextButton") then v:Destroy() end
-	end
+    -- ⛔ nếu menu đang đóng thì KHÔNG refresh
+    if not MenuFrame.Visible then return end
 
-	local pinY, ignoreY = 0, 0
-	local filter = string.lower(searchBox.Text)
+    -- ===== XOÁ BUTTON CŨ =====
+    for _, v in ipairs(pinList:GetChildren()) do
+        if v:IsA("TextButton") then
+            v:Destroy()
+        end
+    end
 
-	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= player and string.find(string.lower(plr.Name), filter, 1, true) then
-			
-			-- PIN
-			local state = (PinnedPlayer == plr and "PIN") or nil
-			-- PIN
-local btn = createPlayerButton(pinList, plr.Name, pinY, function()
-    togglePinPlayer(plr)
-    refreshPlayerLists()
-end)
+    for _, v in ipairs(ignoreList:GetChildren()) do
+        if v:IsA("TextButton") then
+            v:Destroy()
+        end
+    end
 
-if PinnedPlayer == plr then
-    btn.Text = plr.Name .. " [PIN]"
-    btn.BackgroundColor3 = Color3.fromRGB(60,180,60)
-else
-    btn.Text = plr.Name
-end
+    -- ===== TẠO LẠI BUTTON =====
+    local pinY, ignoreY = 0, 0
 
-pinY += 24
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player then
 
--- IGNORE
-local btn2 = createPlayerButton(ignoreList, plr.Name, ignoreY, function()
-    toggleIgnorePlayer(plr.Name)
-    refreshPlayerLists()
-end)
+            -- PIN
+            local pinBtn = Instance.new("TextButton", pinList)
+            pinBtn.Size = UDim2.new(1, -10, 0, 22)
+            pinBtn.Position = UDim2.new(0, 5, 0, pinY)
+            pinBtn.TextScaled = true
+            pinBtn.Font = Enum.Font.Gotham
+            pinBtn.TextColor3 = Color3.new(1,1,1)
+            pinBtn.BackgroundColor3 = Color3.fromRGB(38,38,38)
 
-if IgnoredPlayers[plr.Name] then
-    btn2.Text = plr.Name .. " [IGN]"
-    btn2.BackgroundColor3 = Color3.fromRGB(180,60,60)
-else
-    btn2.Text = plr.Name
-end
+            if PinnedPlayer == plr then
+                pinBtn.Text = plr.Name .. " [PIN]"
+                pinBtn.BackgroundColor3 = Color3.fromRGB(60,180,60)
+            else
+                pinBtn.Text = plr.Name
+            end
 
-ignoreY += 24
-		end
-	end
+            pinBtn.MouseButton1Click:Connect(function()
+                if PinnedPlayer == plr then
+                    PinnedPlayer = nil
+                else
+                    PinnedPlayer = plr
+                end
+                refreshPlayerLists() -- 🔥 CẬP NHẬT NGAY
+            end)
 
-	pinList.CanvasSize = UDim2.new(0,0,0,pinY)
+            pinY += 24
+
+            -- IGNORE
+            local ignBtn = Instance.new("TextButton", ignoreList)
+            ignBtn.Size = UDim2.new(1, -10, 0, 22)
+            ignBtn.Position = UDim2.new(0, 5, 0, ignoreY)
+            ignBtn.TextScaled = true
+            ignBtn.Font = Enum.Font.Gotham
+            ignBtn.TextColor3 = Color3.new(1,1,1)
+            ignBtn.BackgroundColor3 = Color3.fromRGB(38,38,38)
+
+            if IgnoredPlayers[plr.Name] then
+                ignBtn.Text = plr.Name .. " [IGN]"
+                ignBtn.BackgroundColor3 = Color3.fromRGB(180,60,60)
+            else
+                ignBtn.Text = plr.Name
+            end
+
+            ignBtn.MouseButton1Click:Connect(function()
+                IgnoredPlayers[plr.Name] = not IgnoredPlayers[plr.Name]
+                if PinnedPlayer and PinnedPlayer.Name == plr.Name then
+                    PinnedPlayer = nil
+                end
+                refreshPlayerLists() -- 🔥 CẬP NHẬT NGAY
+            end)
+
+            ignoreY += 24
+        end
+    end
+
+pinList.CanvasSize = UDim2.new(0,0,0,pinY)
 	ignoreList.CanvasSize = UDim2.new(0,0,0,ignoreY)
 end
 
 AimMenuFrame.Size = UDim2.new(0,260,0,400)
 
 PlusBtn.MouseButton1Click:Connect(function()
-refreshPlayerLists()
-	AimMenu.Enabled = not AimMenu.Enabled
+    AimMenu.Enabled = not AimMenu.Enabled
+
+    if AimMenu.Enabled then
+        refreshPlayerLists() -- 🔥 refresh SAU khi menu mở
+    end
 end)
 
 
