@@ -864,18 +864,18 @@ Instance.new("UICorner", PlusBtn).CornerRadius = UDim.new(0,6)
 --------------------------------------------------
 -- PLAYER LIST UI
 --------------------------------------------------
-local function createPlayerButton(parent, name, y, callback, state)
-	local b = Instance.new("TextButton", parent)
-	b.Size = UDim2.new(1,-10,0,22)
-	b.Position = UDim2.new(0,5,0,y)
-	b.Text = name .. (state and (" ["..state.."]") or "")
-	b.TextScaled = true
-	b.Font = Enum.Font.Gotham
-	b.BackgroundColor3 = Color3.fromRGB(38,38,38)
-	b.TextColor3 = Color3.new(1,1,1)
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0,6)
-	b.MouseButton1Click:Connect(callback)
-	return b
+local function createPlayerButton(parent, name, y, callback)
+    local b = Instance.new("TextButton", parent)
+    b.Size = UDim2.new(1,-10,0,22)
+    b.Position = UDim2.new(0,5,0,y)
+    b.Text = name
+    b.TextScaled = true
+    b.Font = Enum.Font.Gotham
+    b.BackgroundColor3 = Color3.fromRGB(38,38,38)
+    b.TextColor3 = Color3.new(1,1,1)
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0,6)
+    b.MouseButton1Click:Connect(callback)
+    return b
 end
 
 local function createSlider(text, min, max, default, posY, callback)
@@ -1017,27 +1017,35 @@ refreshPlayerLists = function()
 			
 			-- PIN
 			local state = (PinnedPlayer == plr and "PIN") or nil
-			local btn = createPlayerButton(pinList, plr.Name, pinY, function()
-				togglePinPlayer(plr)
-task.defer(refreshPlayerLists)
-			end, state)
+			-- PIN
+local btn = createPlayerButton(pinList, plr.Name, pinY, function()
+    togglePinPlayer(plr)
+    refreshPlayerLists()
+end)
 
-			if PinnedPlayer == plr then
-				btn.BackgroundColor3 = Color3.fromRGB(60,180,60)
-			end
-			pinY += 24
+if PinnedPlayer == plr then
+    btn.Text = plr.Name .. " [PIN]"
+    btn.BackgroundColor3 = Color3.fromRGB(60,180,60)
+else
+    btn.Text = plr.Name
+end
 
-			-- IGNORE
-			local state2 = IgnoredPlayers[plr.Name] and "IGN"
-			local btn2 = createPlayerButton(ignoreList, plr.Name, ignoreY, function()
-				toggleIgnorePlayer(plr.Name)
-task.defer(refreshPlayerLists)
-			end, state2)
+pinY += 24
 
-			if IgnoredPlayers[plr.Name] then
-				btn2.BackgroundColor3 = Color3.fromRGB(180,60,60)
-			end
-			ignoreY += 24
+-- IGNORE
+local btn2 = createPlayerButton(ignoreList, plr.Name, ignoreY, function()
+    toggleIgnorePlayer(plr.Name)
+    refreshPlayerLists()
+end)
+
+if IgnoredPlayers[plr.Name] then
+    btn2.Text = plr.Name .. " [IGN]"
+    btn2.BackgroundColor3 = Color3.fromRGB(180,60,60)
+else
+    btn2.Text = plr.Name
+end
+
+ignoreY += 24
 		end
 	end
 
