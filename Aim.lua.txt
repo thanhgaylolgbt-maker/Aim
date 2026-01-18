@@ -914,6 +914,20 @@ AimMenuFrame.Position = UDim2.new(0,60,0,60)
 AimMenuFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
 Instance.new("UICorner", AimMenuFrame).CornerRadius = UDim.new(0,10)
 
+local refreshBtn = Instance.new("TextButton", AimMenuFrame)
+refreshBtn.Size = UDim2.new(0,28,0,22)
+refreshBtn.Position = UDim2.new(1,-32,0,2)
+refreshBtn.Text = "RE"
+refreshBtn.TextScaled = true
+refreshBtn.Font = Enum.Font.GothamBold
+refreshBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+refreshBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0,6)
+
+refreshBtn.MouseButton1Click:Connect(function()
+    refreshPlayerLists()
+end)
+
 local titlePin = Instance.new("TextLabel", AimMenuFrame)
 titlePin.Size = UDim2.new(1,0,0,24)
 titlePin.Text = "AIM PIN (tap to lock)"
@@ -935,7 +949,7 @@ Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0,6)
 
 local pinList = Instance.new("ScrollingFrame", AimMenuFrame)
 pinList.Position = UDim2.new(0,5,0,60)
-pinList.Size = UDim2.new(1,-10,0,130)
+pinList.Size = UDim2.new(1,-10,0,72)
 pinList.CanvasSize = UDim2.new(0,0,0,0)
 pinList.ScrollBarImageTransparency = 0.5
 pinList.BackgroundTransparency = 1
@@ -951,7 +965,7 @@ titleIgnore.BackgroundTransparency = 1
 
 local ignoreList = Instance.new("ScrollingFrame", AimMenuFrame)
 ignoreList.Position = UDim2.new(0,5,0,200)
-ignoreList.Size = UDim2.new(1,-10,0,120)
+ignoreList.Size = UDim2.new(1,-10,0,72)
 ignoreList.CanvasSize = UDim2.new(0,0,0,0)
 ignoreList.ScrollBarImageTransparency = 0.5
 ignoreList.BackgroundTransparency = 1
@@ -1002,12 +1016,8 @@ end
 
 AimMenuFrame.Size = UDim2.new(0,260,0,400)
 
-searchBox:GetPropertyChangedSignal("Text"):Connect(refreshPlayerLists)
-
 PlusBtn.MouseButton1Click:Connect(function()
 	AimMenu.Enabled = not AimMenu.Enabled
-	if AimMenu.Enabled then
-		refreshPlayerLists()
 	end
 end)
 
