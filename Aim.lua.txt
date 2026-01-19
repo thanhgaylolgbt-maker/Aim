@@ -83,6 +83,16 @@ local function isNearGround(hrp)
 	return rayResult ~= nil
 end
 
+-- =========================
+-- CAMERA CHECK
+-- =========================
+local function isLookingUp80Plus()
+    local cam = workspace.CurrentCamera
+    if not cam then return false end
+
+    return cam.CFrame.LookVector.Y >= 0.985
+end
+
 local MAX_AIM_DISTANCE = 800
 
 local function isInAimDistance(plr)
@@ -480,10 +490,6 @@ local function isNotValidCondition()
     or (currentTool and currentTool.Name == "Portal-Portal")
 end
 
-local function isUsingYama()
-    return (currentTool and currentTool.Name == "Yama Sword")
-end
-
 local function startRenderLoop()
     if renderConnection then return end
 
@@ -570,11 +576,12 @@ spawn(function()
         OldHook = hookmetamethod(game, "__namecall", function(self, V1, V2, ...)
             local Method = (getnamecallmethod and getnamecallmethod():lower()) or ""
 
-            if tostring(self) == "RemoteEvent" and Method == "fireserver" then
-
-if isUsingYama() then
+    -- 🚫 NHÌN LÊN TRỜI ≥ 80° → TẮT AIM
+    if isLookingUp80Plus() then
         return OldHook(self, V1, V2, ...)
     end
+
+            if tostring(self) == "RemoteEvent" and Method == "fireserver" then
 
                 if typeof(V1) == "Vector3" then
                     if SilentAimPlayersEnabled and PlayersPosition then
