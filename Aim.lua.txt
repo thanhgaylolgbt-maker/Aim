@@ -83,14 +83,18 @@ local function isNearGround(hrp)
 	return rayResult ~= nil
 end
 
--- =========================
--- CAMERA CHECK
--- =========================
 local function isLookingUp80Plus()
     local cam = workspace.CurrentCamera
     if not cam then return false end
 
-    return cam.CFrame.LookVector.Y >= 0.985
+    local look = cam.CFrame.LookVector
+    local up = Vector3.new(0, 1, 0)
+
+    -- dot = cos(góc giữa 2 vector)
+    local dot = look:Dot(up)
+
+    -- cos(80°) ≈ 0.173
+    return dot >= 0.17
 end
 
 local MAX_AIM_DISTANCE = 800
