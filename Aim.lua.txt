@@ -61,7 +61,7 @@ local Booms = {"TAP"}
 
 local PredictionAmount = 1
 local maxRange = 800
-local LOW_HP_PRIORITY_DISTANCE = 150
+local LOW_HP_PRIORITY_DISTANCE = 200
 
 local BasePrediction = 0.17      -- Prediction gốc
 local MinPrediction = 0.08
