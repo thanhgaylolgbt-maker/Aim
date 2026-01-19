@@ -83,20 +83,6 @@ local function isNearGround(hrp)
 	return rayResult ~= nil
 end
 
-local function isLookingUp80Plus()
-    local cam = workspace.CurrentCamera
-    if not cam then return false end
-
-    local look = cam.CFrame.LookVector
-    local up = Vector3.new(0, 1, 0)
-
-    -- dot = cos(góc giữa 2 vector)
-    local dot = look:Dot(up)
-
-    -- cos(80°) ≈ 0.173
-    return dot >= 0.17
-end
-
 local MAX_AIM_DISTANCE = 800
 
 local function isInAimDistance(plr)
@@ -579,11 +565,6 @@ spawn(function()
         local OldHook
         OldHook = hookmetamethod(game, "__namecall", function(self, V1, V2, ...)
             local Method = (getnamecallmethod and getnamecallmethod():lower()) or ""
-
-    -- 🚫 NHÌN LÊN TRỜI ≥ 80° → TẮT AIM
-    if isLookingUp80Plus() then
-        return OldHook(self, V1, V2, ...)
-    end
 
             if tostring(self) == "RemoteEvent" and Method == "fireserver" then
 
