@@ -481,7 +481,7 @@ local function isNotValidCondition()
 end
 
 local function isUsingYama()
-    return currentTool and currentTool.Name == "Yama"
+    return currentTool and currentTool.Name == "Yama Sword"
 end
 
 local function startRenderLoop()
