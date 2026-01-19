@@ -61,10 +61,11 @@ local Booms = {"TAP"}
 
 local PredictionAmount = 1
 local maxRange = 800
+local LOW_HP_PRIORITY_DISTANCE = 150
 
 local BasePrediction = 0.17      -- Prediction gốc
 local MinPrediction = 0.08
-local MaxPrediction = 0.25
+local MaxPrediction = 0.27
 
 local GroundCheckDistance = 4    -- Khoảng cách tính là "gần mặt đất"
 
@@ -307,6 +308,35 @@ local function isEnemy(targetplayer)
 	return true
 end
 
+local function getLowestHPPlayerInRange(lpHRP, range)
+    local lowest = nil
+    local lowestRatio = math.huge
+
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if pl ~= player
+        and not IgnoredPlayers[pl.Name]
+        and isEnemy(pl)
+        and pl.Character then
+
+            local hrp = getHRP(pl.Character)
+            local hum = pl.Character:FindFirstChildWhichIsA("Humanoid")
+
+            if hrp and hum and hum.Health > 0 then
+                local dist = (hrp.Position - lpHRP.Position).Magnitude
+                if dist <= range then
+                    local ratio = hum.Health / hum.MaxHealth
+                    if ratio < lowestRatio then
+                        lowestRatio = ratio
+                        lowest = pl
+                    end
+                end
+            end
+        end
+    end
+
+    return lowest
+end
+
 local function getClosestplayer(lpHRP)
 	-- ===== CÓ PIN → ƯU TIÊN PIN =====
 	if PinnedPlayer then
@@ -330,30 +360,38 @@ local function getClosestplayer(lpHRP)
 		PinnedPlayer = nil
 	end
 
-	-- ===== KHÔNG PIN → AIM NGƯỜI GẦN NHẤT =====
-	local closest = nil
-	local closestDist = math.huge
+	-- ===== KHÔNG PIN =====
 
-	for _, pl in ipairs(Players:GetPlayers()) do
-		if pl ~= player
-		and not IgnoredPlayers[pl.Name]
-		and isEnemy(pl)
-		and pl.Character then
+-- 🔴 ƯU TIÊN LOW HP TRONG 150m
+local lowHpTarget = getLowestHPPlayerInRange(lpHRP, LOW_HP_PRIORITY_DISTANCE)
+if lowHpTarget and isInAimDistance(lowHpTarget) then
+    return lowHpTarget
+end
 
-			local hrp = getHRP(pl.Character)
-			local hum = pl.Character:FindFirstChildWhichIsA("Humanoid")
+-- 🟡 KHÔNG CÓ → AIM NGƯỜI GẦN NHẤT
+local closest = nil
+local closestDist = math.huge
 
-			if hrp and hum and hum.Health > 0 and isInAimDistance(pl) then
-				local dist = (hrp.Position - lpHRP.Position).Magnitude
-				if dist < closestDist then
-					closestDist = dist
-					closest = pl
-				end
-			end
-		end
-	end
+for _, pl in ipairs(Players:GetPlayers()) do
+    if pl ~= player
+    and not IgnoredPlayers[pl.Name]
+    and isEnemy(pl)
+    and pl.Character then
 
-	return closest
+        local hrp = getHRP(pl.Character)
+        local hum = pl.Character:FindFirstChildWhichIsA("Humanoid")
+
+        if hrp and hum and hum.Health > 0 and isInAimDistance(pl) then
+            local dist = (hrp.Position - lpHRP.Position).Magnitude
+            if dist < closestDist then
+                closestDist = dist
+                closest = pl
+            end
+        end
+    end
+end
+
+return closest
 end
 
 local function getClosestNPC(lpHRP)
@@ -440,6 +478,10 @@ end
 local function isNotValidCondition()
     return (currentTool and currentTool.Name == "Lightning-Lightning")
     or (currentTool and currentTool.Name == "Portal-Portal")
+end
+
+local function isUsingYama()
+    return currentTool and currentTool.Name == "Yama"
 end
 
 local function startRenderLoop()
@@ -548,6 +590,9 @@ spawn(function()
 				end   
             elseif Method == "invokeserver" then  
 	            if isValidCondition() then
+if isUsingYama() and V1 == "Z" then
+            return OldHook(self, V1, V2, ...)
+        end
 	                if type(V1) == "string" and table.find(Skills, V1) then  
 	                    if SilentAimPlayersEnabled and PlayersPosition then  
 	                        return OldHook(self, V1, PlayersPosition, nil, ...)
