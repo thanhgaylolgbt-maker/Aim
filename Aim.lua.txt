@@ -525,16 +525,16 @@ local function startRenderLoop()
 
     renderConnection = RunService.RenderStepped:Connect(function()
 
--- 🚫 Nhìn lên trời >= 80° → tắt aim tạm thời
-if isLookingUp80Plus() then
-    playersaimbot, PlayersPosition = nil, nil
-    NPCaimbot, NPCPosition = nil, nil
-    PlayerTarget = nil
-    NPCTarget = nil
-    clearHighlight()
-    drawPredictionCircle(nil)
-    return -- CHỈ return frame này, KHÔNG ẢNH HƯỞNG GAME
-end
+        -- 🚫 Nhìn lên trời >= 80° → tắt aim tạm
+        if isLookingUp80Plus() then
+            playersaimbot, PlayersPosition = nil, nil
+            NPCaimbot, NPCPosition = nil, nil
+            PlayerTarget = nil
+            NPCTarget = nil
+            clearHighlight()
+            drawPredictionCircle(nil)
+            return
+        end
 
         local lpChar = player.Character
         if not lpChar then return end
@@ -542,15 +542,17 @@ end
         if not lpHRP then return end
 
         if not SilentAimPlayersEnabled and not SilentAimNPCsEnabled then
+            drawPredictionCircle(nil)
             return
         end
 
         local targetModel = nil
         local lookTargetPos = nil
 
+        -- ===== PLAYER =====
         if SilentAimPlayersEnabled then
             local targetplayer = getClosestplayer(lpHRP)
-            if targetplayer and targetplayer ~= player and targetplayer.Character then
+            if targetplayer and targetplayer.Character then
                 playersaimbot = targetplayer.Name
                 PlayerTarget = targetplayer.Character
                 local hrp = getHRP(targetplayer.Character)
@@ -562,40 +564,33 @@ end
                 playersaimbot, PlayersPosition = nil, nil
                 PlayerTarget = nil
             end
-        elseif currentTargetType == "player" then
-            playersaimbot, PlayersPosition = nil, nil
-            clearHighlight()
         end
 
-        if SilentAimNPCsEnabled then  
-            local closestNPC = getClosestNPC(lpHRP)  
-            if closestNPC then  
-                NPCaimbot = closestNPC.Name  
-                NPCTarget = closestNPC
-                local hrp = getHRP(closestNPC)  
+        -- ===== NPC =====
+        if SilentAimNPCsEnabled then
+            local npc = getClosestNPC(lpHRP)
+            if npc then
+                NPCaimbot = npc.Name
+                NPCTarget = npc
+                local hrp = getHRP(npc)
                 NPCPosition = getPredictedPosition(hrp)
-                lookTargetPos = NPCPosition
-                if not targetModel then  
-                    targetModel = closestNPC  
-                    applyHighlight(targetModel, "NPC")  
-                end  
-            else  
-                NPCaimbot, NPCPosition = nil, nil  
+                lookTargetPos = lookTargetPos or NPCPosition
+                if not targetModel then
+                    applyHighlight(npc, "NPC")
+                end
+            else
+                NPCaimbot, NPCPosition = nil, nil
+                NPCTarget = nil
             end
-        elseif currentTargetType == "NPC" then
-            NPCaimbot, NPCPosition = nil, nil  
-            NPCTarget = nil
-            clearHighlight()
         end
-    end
 
-        -- 🔴 DRAW PREDICTION
+        -- 🔴 DRAW PREDICTION (ĐÚNG CHỖ – BẮT BUỘC Ở ĐÂY)
         if lookTargetPos then
             drawPredictionCircle(lookTargetPos)
         else
             drawPredictionCircle(nil)
         end
-end)
+    end)
 end
 
 local function stopRenderLoop()
