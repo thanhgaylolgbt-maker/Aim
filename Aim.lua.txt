@@ -601,13 +601,6 @@ spawn(function()
         OldHook = hookmetamethod(game, "__namecall", function(self, V1, V2, ...)
             local Method = (getnamecallmethod and getnamecallmethod():lower()) or ""
 
-if not currentTool then
-    local char = player.Character
-    if char then
-        currentTool = char:FindFirstChildOfClass("Tool")
-    end
-end
-
 -- =========================
 -- YAMA Z DETECT (PAUSE AIM)
 -- =========================
