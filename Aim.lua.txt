@@ -24,7 +24,7 @@ local Services = setmetatable({}, {
     end
 });
 
-local SilentAimPlayersEnabled = false
+local SilentAimPlayersEnabled = true
 local SilentAimNPCsEnabled = false
 local UserWantsplayerAim = false
 local UserWantsNPCAim = false
@@ -44,6 +44,7 @@ local currentHighlight = nil
 local currentTargetType = nil
 -- 🔴 PREDICTION VISUAL
 local PredictionCircle = nil
+local AimPausedByLookUp = false
 local Selectedplayer = nil
 -- PIN / IGNORE SYSTEM
 local PinnedPlayer = nil        -- Player object
@@ -527,6 +528,7 @@ local function startRenderLoop()
 
         -- 🚫 Nhìn lên trời >= 80° → tắt aim tạm
         if isLookingUp80Plus() then
+    AimPausedByLookUp = true
             playersaimbot, PlayersPosition = nil, nil
             NPCaimbot, NPCPosition = nil, nil
             PlayerTarget = nil
@@ -535,6 +537,8 @@ local function startRenderLoop()
             drawPredictionCircle(nil)
             return
         end
+
+AimPausedByLookUp = false
 
         local lpChar = player.Character
         if not lpChar then return end
@@ -629,7 +633,7 @@ spawn(function()
             if tostring(self) == "RemoteEvent" and Method == "fireserver" then
 
                 if typeof(V1) == "Vector3" then
-                    if SilentAimPlayersEnabled and PlayersPosition then
+                    if not AimPausedByLookUp and SilentAimPlayersEnabled and PlayersPosition then
                         return OldHook(self, PlayersPosition, V2, ...)
                     elseif SilentAimNPCsEnabled and NPCPosition then
                         return OldHook(self, NPCPosition, V2, ...)
@@ -637,7 +641,7 @@ spawn(function()
 				end				
 				if type(V1) == "string" and table.find(Booms, V1) then
 					if ZSkillorM1 then 
-	                    if SilentAimPlayersEnabled and PlayersPosition then
+	                    if not AimPausedByLookUp and SilentAimPlayersEnabled and PlayersPosition then
 	                        return OldHook(self, V1, PlayersPosition, nil, ...)
 	                    elseif SilentAimNPCsEnabled and NPCPosition then
 	                        return OldHook(self, V1, NPCPosition, nil, ...)
@@ -647,7 +651,7 @@ spawn(function()
             elseif Method == "invokeserver" then  
 	            if isValidCondition() then
 	                if type(V1) == "string" and table.find(Skills, V1) then  
-	                    if SilentAimPlayersEnabled and PlayersPosition then  
+	                    if not AimPausedByLookUp and SilentAimPlayersEnabled and PlayersPosition then
 	                        return OldHook(self, V1, PlayersPosition, nil, ...)
 	                    elseif SilentAimNPCsEnabled and NPCPosition then
 		                    return OldHook(self, V1, NPCPosition, nil, ...)
@@ -708,7 +712,9 @@ if not isNotValidCondition() then
 		        return
 		    end
 		
-            if Mouse and ZSkillorM1 and (SilentAimPlayersEnabled or SilentAimNPCsEnabled) then 
+            if Mouse and ZSkillorM1 
+and not AimPausedByLookUp
+and (SilentAimPlayersEnabled or SilentAimNPCsEnabled) then
                 local targetCFrame = nil  
 
                 if PlayersPosition then  
