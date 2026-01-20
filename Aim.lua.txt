@@ -42,6 +42,8 @@ local NPCaimbot = nil
 local NPCPosition = nil
 local currentHighlight = nil
 local currentTargetType = nil
+-- 🔴 PREDICTION VISUAL
+local PredictionCircle = nil
 local Selectedplayer = nil
 -- PIN / IGNORE SYSTEM
 local PinnedPlayer = nil        -- Player object
@@ -128,6 +130,12 @@ local function toggleIgnorePlayer(name)
 
 	Selectedplayer = nil
 	refreshPlayerLists()
+end
+
+local function isLookingUp80Plus()
+    local cam = workspace.CurrentCamera
+    if not cam then return false end
+    return cam.CFrame.LookVector.Y >= 0.985
 end
 
 local function getHRP(model)
@@ -438,8 +446,40 @@ local function applyHighlight(targetModel, targetType)
     hl.Parent = targetModel  
     currentHighlight = hl  
     currentTargetType = targetType
-
     VSkillModule:CheckVSkillUsage(SilentAimModule)
+end
+
+local function drawPredictionCircle(worldPos)
+    if not worldPos then
+        if PredictionCircle then
+            PredictionCircle:Destroy()
+            PredictionCircle = nil
+        end
+        return
+    end
+
+    if not PredictionCircle then
+        local gui = Instance.new("BillboardGui")
+        gui.Name = "PredictionCircle"
+        gui.Size = UDim2.new(0,18,0,18)
+        gui.AlwaysOnTop = true
+        gui.LightInfluence = 0
+        gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+        local circle = Instance.new("Frame", gui)
+        circle.Size = UDim2.new(1,0,1,0)
+        circle.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+        circle.BackgroundTransparency = 0.1
+        circle.BorderSizePixel = 0
+
+        local corner = Instance.new("UICorner", circle)
+        corner.CornerRadius = UDim.new(1,0)
+
+        PredictionCircle = gui
+        gui.Parent = workspace
+    end
+
+    PredictionCircle.StudsOffsetWorldSpace = worldPos
 end
 
 local function clearHighlight()
@@ -484,6 +524,18 @@ local function startRenderLoop()
     if renderConnection then return end
 
     renderConnection = RunService.RenderStepped:Connect(function()
+
+-- 🚫 Nhìn lên trời >= 80° → tắt aim tạm thời
+if isLookingUp80Plus() then
+    playersaimbot, PlayersPosition = nil, nil
+    NPCaimbot, NPCPosition = nil, nil
+    PlayerTarget = nil
+    NPCTarget = nil
+    clearHighlight()
+    drawPredictionCircle(nil)
+    return -- CHỈ return frame này, KHÔNG ẢNH HƯỞNG GAME
+end
+
         local lpChar = player.Character
         if not lpChar then return end
         local lpHRP = lpChar:FindFirstChild("HumanoidRootPart")
@@ -535,13 +587,25 @@ local function startRenderLoop()
             NPCTarget = nil
             clearHighlight()
         end
-    end)
-end
+    end
+
+        -- 🔴 DRAW PREDICTION
+        if lookTargetPos then
+            drawPredictionCircle(lookTargetPos)
+        else
+            drawPredictionCircle(nil)
+        end
+end)
 
 local function stopRenderLoop()
     if renderConnection then
         renderConnection:Disconnect()
         renderConnection = nil
+    end
+
+    if PredictionCircle then
+        PredictionCircle:Destroy()
+        PredictionCircle = nil
     end
 end
 
