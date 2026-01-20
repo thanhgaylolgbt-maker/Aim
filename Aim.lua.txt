@@ -1180,4 +1180,6 @@ RunService.RenderStepped:Connect(function()
     TargetInfoFrame.Visible = false
 end)
 
+VSkillModule:CheckVSkillUsage(SilentAimModule)
+
 return SilentAimModule
