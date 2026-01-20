@@ -606,7 +606,7 @@ spawn(function()
 -- =========================
 if Method == "invokeserver" or Method == "fireserver" then
     if type(V1) == "string" and V1:upper() == "Z" then
-        if currentTool and currentTool.Name == "Yama Sword" then
+        if currentTool and currentTool.Name == "Yama" then
             yamaZActive = true
             if not SilentAimPausedByYama then
                 SilentAimPausedByYama = true
