@@ -593,19 +593,13 @@ local function isValidCondition()
     return (currentTool and currentTool.Name == "Buddy Sword")
 end
 
--- =========================
--- FULL HOOK __NAMECALL
--- =========================
-
 spawn(function()
-    local ok, mt = pcall(getrawmetatable, game)
-    if not ok or not mt then return end
-
-    setreadonly(mt, false)
-    local OldHook
-
-    OldHook = hookmetamethod(game, "__namecall", function(self, V1, V2, ...)
-        local Method = (getnamecallmethod and getnamecallmethod():lower()) or ""
+    local ok, hookMeta = pcall(getrawmetatable, game)
+    if ok and hookMeta then
+        setreadonly(hookMeta, false)
+        local OldHook
+        OldHook = hookmetamethod(game, "__namecall", function(self, V1, V2, ...)
+            local Method = (getnamecallmethod and getnamecallmethod():lower()) or ""
 
 if not currentTool then
     local char = player.Character
@@ -614,64 +608,56 @@ if not currentTool then
     end
 end
 
-        -- =========================
-        -- YAMA Z DETECT (PAUSE)
-        -- =========================
-        if (Method == "fireserver" or Method == "invokeserver") then
-            if type(V1) == "string" and V1:upper() == "Z" then
-                if (currentTool.Name == "Yama" or currentTool.Name == "Yama Sword") then
-                    yamaZActive = true
-                    if not SilentAimPausedByYama then
-                        SilentAimPausedByYama = true
-                        SilentAimModule:Pause()
-                    end
-                end
+-- =========================
+-- YAMA Z DETECT (PAUSE AIM)
+-- =========================
+if Method == "invokeserver" or Method == "fireserver" then
+    if type(V1) == "string" and V1:upper() == "Z" then
+        if (currentTool.Name == "Yama" or currentTool.Name == "Yama Sword") then
+            yamaZActive = true
+            if not SilentAimPausedByYama then
+                SilentAimPausedByYama = true
+                SilentAimModule:Pause()
             end
         end
+    end
+end
 
-        -- =========================
-        -- REMOTEEVENT VECTOR3 REDIRECT
-        -- =========================
-        if tostring(self) == "RemoteEvent" and Method == "fireserver" then
+            if tostring(self) == "RemoteEvent" and Method == "fireserver" then
 
-            if typeof(V1) == "Vector3" then
-                if SilentAimPlayersEnabled and PlayersPosition then
-                    return OldHook(self, PlayersPosition, V2, ...)
-                elseif SilentAimNPCsEnabled and NPCPosition then
-                    return OldHook(self, NPCPosition, V2, ...)
-                end
-            end
-
-            if type(V1) == "string" and table.find(Booms, V1) then
-                if ZSkillorM1 then
+                if typeof(V1) == "Vector3" then
                     if SilentAimPlayersEnabled and PlayersPosition then
-                        return OldHook(self, V1, PlayersPosition, nil, ...)
+
+                        return OldHook(self, PlayersPosition, V2, ...)
                     elseif SilentAimNPCsEnabled and NPCPosition then
-                        return OldHook(self, V1, NPCPosition, nil, ...)
+                        return OldHook(self, NPCPosition, V2, ...)
                     end
-                end
-            end
-        end
-
-        -- =========================
-        -- INVOKESERVER SKILL REDIRECT
-        -- =========================
-        if Method == "invokeserver" then
-            if isValidCondition() then
-                if type(V1) == "string" and table.find(Skills, V1) then
-                    if SilentAimPlayersEnabled and PlayersPosition then
-                        return OldHook(self, V1, PlayersPosition, nil, ...)
-                    elseif SilentAimNPCsEnabled and NPCPosition then
-                        return OldHook(self, V1, NPCPosition, nil, ...)
-                    end
-                end
-            end
-        end
-
-        return OldHook(self, V1, V2, ...)
-    end)
-
-    setreadonly(mt, true)
+				end				
+				if type(V1) == "string" and table.find(Booms, V1) then
+					if ZSkillorM1 then 
+	                    if SilentAimPlayersEnabled and PlayersPosition then
+	                        return OldHook(self, V1, PlayersPosition, nil, ...)
+	                    elseif SilentAimNPCsEnabled and NPCPosition then
+	                        return OldHook(self, V1, NPCPosition, nil, ...)
+	                    end
+					end
+				end   
+            elseif Method == "invokeserver" then  
+	            if isValidCondition() then
+	                if type(V1) == "string" and table.find(Skills, V1) then  
+	                    if SilentAimPlayersEnabled and PlayersPosition then  
+	                        return OldHook(self, V1, PlayersPosition, nil, ...)
+	                    elseif SilentAimNPCsEnabled and NPCPosition then
+		                    return OldHook(self, V1, NPCPosition, nil, ...)
+	                    end  
+	                end    
+				end				
+			end
+            
+            return OldHook(self, V1, V2, ...)
+        end)
+        setreadonly(hookMeta, true)
+    end
 end)
 
 if not isNotValidCondition() then
