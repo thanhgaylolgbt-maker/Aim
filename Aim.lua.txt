@@ -1,6 +1,6 @@
 local SilentAimModule = {}
 
-local VSkillModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/jaanu91/Ip/refs/heads/main/Uo"))()
+local VSkillModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/thanhgaylolgbt-maker/Aim/refs/heads/thanhgaylolgbt-maker-patch-1/Vskillmodule"))()
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -24,7 +24,7 @@ local Services = setmetatable({}, {
     end
 });
 
-local SilentAimPlayersEnabled = false
+local SilentAimPlayersEnabled = true
 local SilentAimNPCsEnabled = false
 local UserWantsplayerAim = false
 local UserWantsNPCAim = false
@@ -51,8 +51,6 @@ local MiniNpcState = nil
 local MiniPlayerCreated = false
 local MiniNpcCreated = false
 local MiniPlayerGui, MiniNpcGui = nil, nil
-local yamaZActive = false
-local SilentAimPausedByYama = false
 -- TARGET INFO
 local PlayerTarget = nil
 local NPCTarget = nil
@@ -601,26 +599,10 @@ spawn(function()
         OldHook = hookmetamethod(game, "__namecall", function(self, V1, V2, ...)
             local Method = (getnamecallmethod and getnamecallmethod():lower()) or ""
 
--- =========================
--- YAMA Z DETECT (PAUSE AIM)
--- =========================
-if Method == "invokeserver" or Method == "fireserver" then
-    if type(V1) == "string" and V1:upper() == "Z" then
-        if (currentTool.Name == "Yama" or currentTool.Name == "Yama Sword") then
-            yamaZActive = true
-            if not SilentAimPausedByYama then
-                SilentAimPausedByYama = true
-                SilentAimModule:Pause()
-            end
-        end
-    end
-end
-
             if tostring(self) == "RemoteEvent" and Method == "fireserver" then
 
                 if typeof(V1) == "Vector3" then
                     if SilentAimPlayersEnabled and PlayersPosition then
-
                         return OldHook(self, PlayersPosition, V2, ...)
                     elseif SilentAimNPCsEnabled and NPCPosition then
                         return OldHook(self, NPCPosition, V2, ...)
@@ -782,12 +764,6 @@ local function onCharacterAdded(char)
     table.insert(characterConnections, char.ChildRemoved:Connect(function(child)
         if child == currentTool then
             currentTool = nil
-
-yamaZActive = false
-        if SilentAimPausedByYama then
-            SilentAimPausedByYama = false
-            SilentAimModule:Restore()
-        end
         end
     end))
 end
@@ -1202,18 +1178,6 @@ RunService.RenderStepped:Connect(function()
         end
     end
     TargetInfoFrame.Visible = false
-end)
-
-RunService.RenderStepped:Connect(function()
-    if yamaZActive then
-        if not currentTool or (currentTool.Name ~= "Yama" and currentTool.Name ~= "Yama Sword") then
-            yamaZActive = false
-            if SilentAimPausedByYama then
-                SilentAimPausedByYama = false
-                SilentAimModule:Restore()
-            end
-        end
-    end
 end)
 
 return SilentAimModule
