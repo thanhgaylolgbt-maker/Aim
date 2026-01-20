@@ -596,6 +596,7 @@ end
             drawPredictionCircle(nil)
         end
 end)
+end
 
 local function stopRenderLoop()
     if renderConnection then
