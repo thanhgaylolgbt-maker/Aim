@@ -70,7 +70,7 @@ local BasePrediction = 0.15      -- Prediction gốc
 local MinPrediction = 0.08
 local MaxPrediction = 0.30
 
-local GroundCheckDistance = 6    -- Khoảng cách tính là "gần mặt đất"
+local GroundCheckDistance = 8    -- Khoảng cách tính là "gần mặt đất"
 
 local function isNearGround(hrp)
 	local rayParams = RaycastParams.new()
@@ -178,7 +178,7 @@ local function getPredictedPosition(hrp)
 	end
 
 	-- ===== CHỐNG NHẢY / RƠI =====
-	if math.abs(velocity.Y) > 4 or isNearGround(hrp) then
+	if isNearGround(hrp) then
 		velocity = Vector3.new(velocity.X, 0, velocity.Z)
 	end
 
