@@ -24,7 +24,7 @@ local Services = setmetatable({}, {
     end
 });
 
-local SilentAimPlayersEnabled = false
+local SilentAimPlayersEnabled = true
 local SilentAimNPCsEnabled = false
 local UserWantsplayerAim = false
 local UserWantsNPCAim = false
@@ -59,15 +59,18 @@ local characterConnections = {}
 local Skills = {"X"}
 local Booms = {"TAP"}
 
-local PredictionAmount = 1
+local LastPos = {}
+local LastTime = {}
+local LastVelocity = {}
+
 local maxRange = 800
 local LOW_HP_PRIORITY_DISTANCE = 200
 
-local BasePrediction = 0.17      -- Prediction gốc
+local BasePrediction = 0.15      -- Prediction gốc
 local MinPrediction = 0.08
-local MaxPrediction = 0.27
+local MaxPrediction = 0.30
 
-local GroundCheckDistance = 4    -- Khoảng cách tính là "gần mặt đất"
+local GroundCheckDistance = 6    -- Khoảng cách tính là "gần mặt đất"
 
 local function isNearGround(hrp)
 	local rayParams = RaycastParams.new()
@@ -146,23 +149,53 @@ local function getPredictedPosition(hrp)
 	if not hrp then return nil end
 
 	local humanoid = hrp.Parent:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
+	if not humanoid or humanoid.Health <= 0 then
 		return hrp.Position
 	end
 
-	if not PredictionEnabled or humanoid.WalkSpeed < 5 then
+	-- ===== TÍNH VELOCITY THỰC (khoảng cách + thời gian) =====
+	local now = tick()
+	local lastP = LastPos[hrp]
+	local lastT = LastTime[hrp]
+
+	local velocity
+	if lastP and lastT then
+		local dt = math.clamp(now - lastT, 0.016, 0.2)
+		velocity = (hrp.Position - lastP) / dt
+	else
+		velocity = hrp.AssemblyLinearVelocity
+	end
+
+	LastPos[hrp] = hrp.Position
+	LastTime[hrp] = now
+
+	local speed = velocity.Magnitude
+	local moveDirMag = humanoid.MoveDirection.Magnitude
+
+	-- ===== ĐỨNG YÊN THẬT =====
+	if not PredictionEnabled or (speed < 4 and moveDirMag < 0.05) then
 		return hrp.Position
 	end
 
-	local velocity = hrp.Velocity
-	local predictionAmount = getDynamicPrediction(hrp)
+	-- ===== CHỐNG NHẢY / RƠI =====
+	if math.abs(velocity.Y) > 4 or isNearGround(hrp) then
+		velocity = Vector3.new(velocity.X, 0, velocity.Z)
+	end
 
-	-- Nếu gần mặt đất → không đoán rơi xuống
-	if isNearGround(hrp) then
-		if velocity.Y < 0 then
-			velocity = Vector3.new(velocity.X, 0, velocity.Z)
+	-- ===== CHỐNG ZIGZAG =====
+	if LastVelocity[hrp] then
+		local lastVel = LastVelocity[hrp]
+		if lastVel.Magnitude > 0 and velocity.Magnitude > 0 then
+			local dot = velocity.Unit:Dot(lastVel.Unit)
+			if dot < 0.25 then
+				velocity = velocity * 0.6
+			end
 		end
 	end
+	LastVelocity[hrp] = velocity
+
+	-- ===== PREDICTION THEO KHOẢNG CÁCH (GIỮ LOGIC CŨ CỦA BẠN) =====
+	local predictionAmount = getDynamicPrediction(hrp)
 
 	return hrp.Position + (velocity * predictionAmount)
 end
