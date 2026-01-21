@@ -117,6 +117,24 @@ local function getHybridPrediction(hrp, velocity)
 	return math.clamp(prediction, MinPrediction, MaxHybridPrediction)
 end
 
+local function getGroundPosition(hrp)
+	local rayParams = RaycastParams.new()
+	rayParams.FilterDescendantsInstances = {hrp.Parent}
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+	local rayResult = Workspace:Raycast(
+		hrp.Position,
+		Vector3.new(0, -20, 0),
+		rayParams
+	)
+
+	if rayResult then
+		return rayResult.Position
+	end
+
+	return hrp.Position
+end
+
 --------------------------------------------------
 -- PIN / IGNORE FUNCTIONS
 --------------------------------------------------
@@ -205,7 +223,20 @@ local function getPredictedPosition(hrp)
 	-- ===== PREDICTION THEO KHOẢNG CÁCH (GIỮ LOGIC CŨ CỦA BẠN) =====
 	local predictionAmount = getHybridPrediction(hrp, velocity)
 
-return hrp.Position + (velocity * predictionAmount)
+local predictedPos = hrp.Position + (velocity * predictionAmount)
+
+-- 🟢 Nếu target sát đất → aim xuống mặt đất dưới chân
+if isNearGround(hrp) then
+	local groundPos = getGroundPosition(hrp)
+
+	predictedPos = Vector3.new(
+		predictedPos.X,
+		groundPos.Y, -- chỉnh 1.2–2.0 tuỳ game
+		predictedPos.Z
+	)
+end
+
+return predictedPos
 end
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
