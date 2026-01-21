@@ -71,8 +71,8 @@ local MinPrediction = 0.08
 local MaxPrediction = 0.30
 -- ===== HYBRID PREDICTION (SPEED + DISTANCE) =====
 local BaseHybridPrediction = 0.05      -- pre nền
-local SpeedFactor          = 0.0015    -- ảnh hưởng tốc độ
-local DistanceFactor       = 0.00020   -- ảnh hưởng khoảng cách
+local SpeedFactor          = 0.0018    -- ảnh hưởng tốc độ
+local DistanceFactor       = 0.00028   -- ảnh hưởng khoảng cách
 local MaxHybridPrediction  = 0.30
 
 local GroundCheckDistance = 6    -- Khoảng cách tính là "gần mặt đất"
@@ -204,6 +204,7 @@ local function getPredictedPosition(hrp)
 
 	-- ===== PREDICTION THEO KHOẢNG CÁCH (GIỮ LOGIC CŨ CỦA BẠN) =====
 	local predictionAmount = getHybridPrediction(hrp, velocity)
+
 return hrp.Position + (velocity * predictionAmount)
 end
 
