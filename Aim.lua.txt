@@ -69,6 +69,11 @@ local LOW_HP_PRIORITY_DISTANCE = 200
 local BasePrediction = 0.15      -- Prediction gốc
 local MinPrediction = 0.08
 local MaxPrediction = 0.30
+-- ===== HYBRID PREDICTION (SPEED + DISTANCE) =====
+local BaseHybridPrediction = 0.05      -- pre nền
+local SpeedFactor          = 0.0015    -- ảnh hưởng tốc độ
+local DistanceFactor       = 0.00020   -- ảnh hưởng khoảng cách
+local MaxHybridPrediction  = 0.30
 
 local GroundCheckDistance = 6    -- Khoảng cách tính là "gần mặt đất"
 
@@ -99,14 +104,17 @@ local function isInAimDistance(plr)
 	return (hrp.Position - myHRP.Position).Magnitude <= MAX_AIM_DISTANCE
 end
 
-local function getDynamicPrediction(hrp)
+local function getHybridPrediction(hrp, velocity)
 	local camPos = Camera.CFrame.Position
 	local distance = (hrp.Position - camPos).Magnitude
+	local speed = velocity.Magnitude
 
-	-- Scale prediction theo khoảng cách
-	local prediction = BasePrediction + (distance / 1000)
+	local prediction =
+		BaseHybridPrediction +
+		(speed * SpeedFactor) +
+		(distance * DistanceFactor)
 
-	return math.clamp(prediction, MinPrediction, MaxPrediction)
+	return math.clamp(prediction, MinPrediction, MaxHybridPrediction)
 end
 
 --------------------------------------------------
@@ -178,7 +186,7 @@ local function getPredictedPosition(hrp)
 	end
 
 	-- ===== CHỐNG NHẢY / RƠI =====
-	if math.abs(velocity.Y) > 4 or isNearGround(hrp) then
+	if isNearGround(hrp) then
 		velocity = Vector3.new(velocity.X, 0, velocity.Z)
 	end
 
@@ -195,9 +203,8 @@ local function getPredictedPosition(hrp)
 	LastVelocity[hrp] = velocity
 
 	-- ===== PREDICTION THEO KHOẢNG CÁCH (GIỮ LOGIC CŨ CỦA BẠN) =====
-	local predictionAmount = getDynamicPrediction(hrp)
-
-	return hrp.Position + (velocity * predictionAmount)
+	local predictionAmount = getHybridPrediction(hrp, velocity)
+return hrp.Position + (velocity * predictionAmount)
 end
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
@@ -342,8 +349,9 @@ local function isEnemy(targetplayer)
 end
 
 local function getLowestHPPlayerInRange(lpHRP, range)
-    local lowest = nil
-    local lowestRatio = math.huge
+    local bestTarget = nil
+    local bestHpRatio = math.huge
+    local bestDist = math.huge
 
     for _, pl in ipairs(Players:GetPlayers()) do
         if pl ~= player
@@ -358,16 +366,26 @@ local function getLowestHPPlayerInRange(lpHRP, range)
                 local dist = (hrp.Position - lpHRP.Position).Magnitude
                 if dist <= range then
                     local ratio = hum.Health / hum.MaxHealth
-                    if ratio < lowestRatio then
-                        lowestRatio = ratio
-                        lowest = pl
+
+                    -- 🔴 Ưu tiên máu thấp hơn
+                    if ratio < bestHpRatio then
+                        bestHpRatio = ratio
+                        bestDist = dist
+                        bestTarget = pl
+
+                    -- 🟡 Nếu bằng máu → chọn thằng gần hơn
+                    elseif math.abs(ratio - bestHpRatio) < 0.01 then
+                        if dist < bestDist then
+                            bestDist = dist
+                            bestTarget = pl
+                        end
                     end
                 end
             end
         end
     end
 
-    return lowest
+    return bestTarget
 end
 
 local function getClosestplayer(lpHRP)
