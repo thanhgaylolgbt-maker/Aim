@@ -24,7 +24,7 @@ local Services = setmetatable({}, {
     end
 });
 
-local SilentAimPlayersEnabled = true
+local SilentAimPlayersEnabled = false
 local SilentAimNPCsEnabled = false
 local UserWantsplayerAim = false
 local UserWantsNPCAim = false
@@ -71,9 +71,9 @@ local MinPrediction = 0.08
 local MaxPrediction = 0.30
 -- ===== HYBRID PREDICTION (SPEED + DISTANCE) =====
 local BaseHybridPrediction = 0.05      -- pre nền
-local SpeedFactor          = 0.0016    -- ảnh hưởng tốc độ
-local DistanceFactor       = 0.00028   -- ảnh hưởng khoảng cách
-local MaxHybridPrediction  = 0.30
+local SpeedFactor          = 0.0014    -- ảnh hưởng tốc độ
+local DistanceFactor       = 0.00026   -- ảnh hưởng khoảng cách
+local MaxHybridPrediction  = 0.27
 
 local GroundCheckDistance = 6    -- Khoảng cách tính là "gần mặt đất"
 
@@ -1198,7 +1198,5 @@ RunService.RenderStepped:Connect(function()
     end
     TargetInfoFrame.Visible = false
 end)
-
-VSkillModule:CheckVSkillUsage(SilentAimModule)
 
 return SilentAimModule
