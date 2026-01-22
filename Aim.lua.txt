@@ -1234,7 +1234,8 @@ distText.TextStrokeTransparency = 0.3
 distText.Visible = false
 
 RunService.RenderStepped:Connect(function()
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then
         diamond.Visible = false
         distText.Visible = false
@@ -1254,20 +1255,46 @@ RunService.RenderStepped:Connect(function()
     local targetHRP = getHRP(target)
     if not targetHRP then return end
 
+    -- 🔒 Ghim vào NGỰC (ổn định nhất)
+    local aimWorldPos = targetHRP.Position + Vector3.new(0, 2.5, 0)
+
     local cam = Camera
-    local screenPos, onScreen = cam:WorldToViewportPoint(targetHRP.Position)
+    local view = cam.ViewportSize
+    local screenCenter = Vector2.new(view.X / 2, view.Y / 2)
 
-    local viewport = cam.ViewportSize
-    local margin = 18
+    local screenPos3D = cam:WorldToViewportPoint(aimWorldPos)
+    local screenPos2D = Vector2.new(screenPos3D.X, screenPos3D.Y)
 
-    local x = math.clamp(screenPos.X, margin, viewport.X - margin)
-    local y = math.clamp(screenPos.Y, margin, viewport.Y - margin)
+    local direction = screenPos2D - screenCenter
 
-    diamond.Position = UDim2.fromOffset(x, y)
-    distText.Position = UDim2.fromOffset(x, y + 10)
+    -- 🧭 Nếu target ở SAU camera → đảo hướng
+    if screenPos3D.Z < 0 then
+        direction = -direction
+    end
 
-    local dist = math.floor((targetHRP.Position - hrp.Position).Magnitude)
-    distText.Text = dist .. " m"
+    -- nếu trong màn hình → hiển thị đúng vị trí
+    local onScreen =
+        screenPos3D.Z > 0 and
+        screenPos2D.X > 0 and screenPos2D.X < view.X and
+        screenPos2D.Y > 0 and screenPos2D.Y < view.Y
+
+    local margin = 20
+    local maxRadius = math.min(view.X, view.Y) / 2 - margin
+
+    local finalPos
+
+    if onScreen then
+        finalPos = screenPos2D
+    else
+        -- 📌 Clamp theo vector từ tâm (KHÔNG LỆCH)
+        local unit = direction.Unit
+        finalPos = screenCenter + unit * maxRadius
+    end
+
+    diamond.Position = UDim2.fromOffset(finalPos.X, finalPos.Y)
+    distText.Position = UDim2.fromOffset(finalPos.X, finalPos.Y + 12)
+
+    distText.Text = math.floor((aimWorldPos - hrp.Position).Magnitude) .. " m"
 
     diamond.Visible = true
     distText.Visible = true
