@@ -26,9 +26,9 @@ local Services = setmetatable({}, {
     end
 });
 
-local SilentAimPlayersEnabled = false
+local SilentAimPlayersEnabled = true
 local SilentAimNPCsEnabled = false
-local UserWantsplayerAim = false
+local UserWantsplayerAim = true
 local UserWantsNPCAim = false
 local PredictionEnabled = true
 local HighlightEnabled = false 
