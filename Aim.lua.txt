@@ -37,6 +37,7 @@ local ZSkillorM1= false
 local autoKenRunning = false
 
 local renderConnection = nil
+local OriginalWaistC0 = nil
 local currentTool = nil
 local playersaimbot = nil
 local PlayersPosition = nil
@@ -356,6 +357,52 @@ local function isEnemy(targetplayer)
 	return true
 end
 
+local function faceTargetFull3D(targetPos)
+    local char = player.Character
+    if not char then return end
+
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    -- ===== 1. XOAY NGANG (YAW – HRP) =====
+    local flatTarget = Vector3.new(
+        targetPos.X,
+        hrp.Position.Y,
+        targetPos.Z
+    )
+
+    hrp.CFrame = hrp.CFrame:Lerp(
+        CFrame.new(hrp.Position, flatTarget),
+        0.35
+    )
+
+    -- ===== 2. XOAY DỌC (PITCH – WAIST) =====
+    local upperTorso = char:FindFirstChild("UpperTorso")
+    if not upperTorso then return end
+
+    local waist = upperTorso:FindFirstChild("Waist")
+    if not waist or not waist:IsA("Motor6D") then return end
+
+    -- LƯU C0 GỐC (CHỈ 1 LẦN)
+    if not OriginalWaistC0 then
+        OriginalWaistC0 = waist.C0
+    end
+
+    -- Vector từ ngực tới target
+    local dir = (targetPos - upperTorso.Position).Unit
+
+    -- Góc ngẩng / cúi
+    local pitch = math.asin(dir.Y)
+
+    -- Giới hạn giống game
+    pitch = math.clamp(pitch, math.rad(-35), math.rad(35))
+
+    -- ÁP GÓC DỰA TRÊN C0 GỐC (KHÔNG CỘNG DỒN)
+    local targetC0 = OriginalWaistC0 * CFrame.Angles(-pitch, 0, 0)
+
+    waist.C0 = waist.C0:Lerp(targetC0, 0.25)
+end
+
 local function getLowestHPPlayerInRange(lpHRP, range)
     local bestTarget = nil
     local bestHpRatio = math.huge
@@ -562,6 +609,7 @@ local function startRenderLoop()
                 PlayerTarget = targetplayer.Character
                 local hrp = getHRP(targetplayer.Character)
                 PlayersPosition = getPredictedPosition(hrp)
+faceTargetFull3D(PlayersPosition)
                 lookTargetPos = PlayersPosition
                 targetModel = targetplayer.Character
                 applyHighlight(targetModel, "player")
@@ -581,6 +629,7 @@ local function startRenderLoop()
                 NPCTarget = closestNPC
                 local hrp = getHRP(closestNPC)  
                 NPCPosition = getPredictedPosition(hrp)
+faceTargetFull3D(NPCPosition)
                 lookTargetPos = NPCPosition
                 if not targetModel then  
                     targetModel = closestNPC  
