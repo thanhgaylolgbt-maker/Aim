@@ -101,7 +101,7 @@ local function isInAimDistance(plr)
 	return (hrp.Position - myHRP.Position).Magnitude <= MAX_AIM_DISTANCE
 end
 
-ocal function getDynamicPrediction(hrp)
+local function getDynamicPrediction(hrp)
 	local camPos = Camera.CFrame.Position
 	local distance = (hrp.Position - camPos).Magnitude
 
@@ -855,12 +855,6 @@ end
 
 function SilentAimModule:IsHighlightEnabled()
     return HighlightEnabled
-end
-
-function SilentAimModule:SetPredictionAmount(num)
-	if typeof(num) == "number" then
-		PredictionAmount = num
-	end
 end
 
 function SilentAimModule:SetPlayerSilentAim(state)
