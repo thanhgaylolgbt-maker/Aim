@@ -1255,44 +1255,57 @@ RunService.RenderStepped:Connect(function()
     local targetHRP = getHRP(target)
     if not targetHRP then return end
 
-    -- 🔒 Ghim vào NGỰC (ổn định nhất)
+    -- 🔒 Ghim vào NGỰC
     local aimWorldPos = targetHRP.Position + Vector3.new(0, 2.5, 0)
 
     local cam = Camera
     local view = cam.ViewportSize
-    local screenCenter = Vector2.new(view.X / 2, view.Y / 2)
+    local cx, cy = view.X / 2, view.Y / 2
 
-    local screenPos3D = cam:WorldToViewportPoint(aimWorldPos)
-    local screenPos2D = Vector2.new(screenPos3D.X, screenPos3D.Y)
+    local screen3D = cam:WorldToViewportPoint(aimWorldPos)
+    local sx, sy, sz = screen3D.X, screen3D.Y, screen3D.Z
 
-    local direction = screenPos2D - screenCenter
-
-    -- 🧭 Nếu target ở SAU camera → đảo hướng
-    if screenPos3D.Z < 0 then
-        direction = -direction
+    -- nếu ở sau camera → lật tọa độ
+    if sz < 0 then
+        sx = view.X - sx
+        sy = view.Y - sy
     end
 
-    -- nếu trong màn hình → hiển thị đúng vị trí
     local onScreen =
-        screenPos3D.Z > 0 and
-        screenPos2D.X > 0 and screenPos2D.X < view.X and
-        screenPos2D.Y > 0 and screenPos2D.Y < view.Y
+        sz > 0 and
+        sx >= 0 and sx <= view.X and
+        sy >= 0 and sy <= view.Y
 
-    local margin = 20
-    local maxRadius = math.min(view.X, view.Y) / 2 - margin
-
-    local finalPos
+    local finalX, finalY
 
     if onScreen then
-        finalPos = screenPos2D
+        -- 🎯 Ghim chính xác vào người địch
+        finalX = sx
+        finalY = sy
     else
-        -- 📌 Clamp theo vector từ tâm (KHÔNG LỆCH)
-        local unit = direction.Unit
-        finalPos = screenCenter + unit * maxRadius
+        -- 📐 CLAMP THEO VIỀN MÀN HÌNH (RECT)
+        local dx = sx - cx
+        local dy = sy - cy
+
+        local slope = dy / dx
+        local edgeX, edgeY
+
+        if math.abs(dx) > math.abs(dy) then
+            -- chạm trái / phải
+            edgeX = dx > 0 and view.X - 12 or 12
+            edgeY = cy + slope * (edgeX - cx)
+        else
+            -- chạm trên / dưới
+            edgeY = dy > 0 and view.Y - 12 or 12
+            edgeX = cx + (edgeY - cy) / slope
+        end
+
+        finalX = math.clamp(edgeX, 12, view.X - 12)
+        finalY = math.clamp(edgeY, 12, view.Y - 12)
     end
 
-    diamond.Position = UDim2.fromOffset(finalPos.X, finalPos.Y)
-    distText.Position = UDim2.fromOffset(finalPos.X, finalPos.Y + 12)
+    diamond.Position = UDim2.fromOffset(finalX, finalY)
+    distText.Position = UDim2.fromOffset(finalX, finalY + 12)
 
     distText.Text = math.floor((aimWorldPos - hrp.Position).Magnitude) .. " m"
 
