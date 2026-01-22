@@ -1242,7 +1242,6 @@ RunService.RenderStepped:Connect(function()
         return
     end
 
-    -- 🎯 lấy target đang lock
     local target =
         (SilentAimPlayersEnabled and PlayerTarget)
         or (SilentAimNPCsEnabled and NPCTarget)
@@ -1257,23 +1256,29 @@ RunService.RenderStepped:Connect(function()
     if not targetHRP then return end
 
     ----------------------------------------------------------------
-    -- 🔒 ĐIỂM GHIM CHUẨN (đầu/ngực – không lệch khi nhìn từ trên)
+    -- 🎯 ĐIỂM AIM THẬT (NGỰC / ĐẦU)
     ----------------------------------------------------------------
     local aimWorldPos =
         targetHRP.Position
-        + Vector3.new(0, targetHRP.Size.Y * 0.9, 0)
+        + Vector3.new(0, targetHRP.Size.Y * 0.85, 0)
 
     local cam = Camera
     local view = cam.ViewportSize
-    local center = Vector2.new(view.X/2, view.Y/2)
+
+    ----------------------------------------------------------------
+    -- 👁️ TÂM NHÌN THẬT (FIX LỆCH Y)
+    ----------------------------------------------------------------
+    local eyeWorld = cam.CFrame.Position + cam.CFrame.LookVector * 10
+    local eyeScreen3D = cam:WorldToViewportPoint(eyeWorld)
+    local eyeCenter = Vector2.new(eyeScreen3D.X, eyeScreen3D.Y)
+
     local safe = Vector2.new(view.X/2 - 12, view.Y/2 - 12)
 
     local screen3D = cam:WorldToViewportPoint(aimWorldPos)
     local pos2D = Vector2.new(screen3D.X, screen3D.Y)
 
-    -- nếu ở sau camera → lật hướng
     if screen3D.Z < 0 then
-        pos2D = center + (center - pos2D)
+        pos2D = eyeCenter + (eyeCenter - pos2D)
     end
 
     local onScreen =
@@ -1284,30 +1289,23 @@ RunService.RenderStepped:Connect(function()
     local finalPos
 
     if onScreen then
-        -- 🎯 dính CHÍNH XÁC vào người địch
+        -- 🎯 GHIM ĐÚNG NGƯỜI
         finalPos = pos2D
     else
         ----------------------------------------------------------------
-        -- 📐 CLAMP THEO VIỀN MÀN HÌNH (RECT – KHÔNG LỆCH Y)
+        -- 📐 RECT CLAMP DỰA TRÊN TÂM NHÌN THẬT
         ----------------------------------------------------------------
-        local delta = pos2D - center
+        local delta = pos2D - eyeCenter
+
         local scaleX = safe.X / math.abs(delta.X)
         local scaleY = safe.Y / math.abs(delta.Y)
         local scale = math.min(scaleX, scaleY)
 
-        finalPos = center + delta * scale
+        finalPos = eyeCenter + delta * scale
     end
 
-    ----------------------------------------------------------------
-    -- 🎥 BÙ GÓC NHÌN CAMERA (FIX LỆCH KHI TOP-DOWN)
-    ----------------------------------------------------------------
-    local pitchOffset = cam.CFrame.LookVector.Y * 30
-
-    diamond.Position =
-        UDim2.fromOffset(finalPos.X, finalPos.Y - pitchOffset)
-
-    distText.Position =
-        UDim2.fromOffset(finalPos.X, finalPos.Y + 6 - pitchOffset)
+    diamond.Position = UDim2.fromOffset(finalPos.X, finalPos.Y)
+    distText.Position = UDim2.fromOffset(finalPos.X, finalPos.Y + 6)
 
     distText.Text =
         math.floor((aimWorldPos - hrp.Position).Magnitude) .. " m"
