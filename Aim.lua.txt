@@ -73,11 +73,11 @@ local MinPrediction = 0.01
 local MaxPrediction = 0.30
 -- ===== HYBRID PREDICTION (SPEED + DISTANCE) =====
 local BaseHybridPrediction = 0.025     -- pre nền
-local SpeedFactor          = 0.00165    -- ảnh hưởng tốc độ
-local DistanceFactor       = 0.00025   -- ảnh hưởng khoảng cách
-local MaxHybridPrediction  = 0.35
+local SpeedFactor          = 0.00155    -- ảnh hưởng tốc độ
+local DistanceFactor       = 0.000255   -- ảnh hưởng khoảng cách
+local MaxHybridPrediction  = 0.325
 
-local GroundCheckDistance = 6    -- Khoảng cách tính là "gần mặt đất"
+local GroundCheckDistance = 8    -- Khoảng cách tính là "gần mặt đất"
 
 local function isNearGround(hrp)
 	local rayParams = RaycastParams.new()
@@ -114,7 +114,7 @@ local function getHybridPrediction(hrp, velocity)
 	-- ===== SCALE THEO KHOẢNG CÁCH (CÀNG GẦN CÀNG GIẢM) =====
 	-- 0 stud  -> scale ~ 0.3
 	-- 300 stud-> scale ~ 1.0
-	local distanceScale = math.clamp(distance / 175, 0.28, 1)
+	local distanceScale = math.clamp(distance / 175, 0.25, 1)
 
 	local prediction =
 		(BaseHybridPrediction * distanceScale) +
