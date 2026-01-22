@@ -68,14 +68,9 @@ local LastVelocity = {}
 local maxRange = 800
 local LOW_HP_PRIORITY_DISTANCE = 200
 
-local BasePrediction = 0.15      -- Prediction gốc
+local BasePrediction = 0.05      -- Prediction gốc
 local MinPrediction = 0.01
-local MaxPrediction = 0.30
--- ===== HYBRID PREDICTION (SPEED + DISTANCE) =====
-local BaseHybridPrediction = 0.025     -- pre nền
-local SpeedFactor          = 0.0015    -- ảnh hưởng tốc độ
-local DistanceFactor       = 0.00025   -- ảnh hưởng khoảng cách
-local MaxHybridPrediction  = 0.3
+local MaxPrediction = 0.35
 
 local GroundCheckDistance = 8    -- Khoảng cách tính là "gần mặt đất"
 
@@ -106,22 +101,20 @@ local function isInAimDistance(plr)
 	return (hrp.Position - myHRP.Position).Magnitude <= MAX_AIM_DISTANCE
 end
 
-local function getHybridPrediction(hrp, velocity)
+ocal function getDynamicPrediction(hrp)
 	local camPos = Camera.CFrame.Position
 	local distance = (hrp.Position - camPos).Magnitude
-	local speed = velocity.Magnitude
 
-	-- ===== SCALE THEO KHOẢNG CÁCH (CÀNG GẦN CÀNG GIẢM) =====
-	-- 0 stud  -> scale ~ 0.3
-	-- 300 stud-> scale ~ 1.0
-	local distanceScale = math.clamp(distance / 225, 0.15, 1)
+	-- Scale prediction theo khoảng cách
+local prediction
+if distance < 100 then
+	-- giảm dần (curve nhẹ)
+	prediction = BasePrediction + (distance / 90) * 0.55
+else
+	prediction = BasePrediction + (distance / 105)
+end
 
-	local prediction =
-		(BaseHybridPrediction * distanceScale) +
-		(speed * SpeedFactor) +
-		(distance * DistanceFactor)
-
-	return math.clamp(prediction, MinPrediction, MaxHybridPrediction)
+return math.clamp(prediction, MinPrediction, MaxPrediction)
 end
 
 --------------------------------------------------
@@ -210,9 +203,9 @@ local function getPredictedPosition(hrp)
 	LastVelocity[hrp] = velocity
 
 	-- ===== PREDICTION THEO KHOẢNG CÁCH (GIỮ LOGIC CŨ CỦA BẠN) =====
-	local predictionAmount = getHybridPrediction(hrp, velocity)
+	local predictionAmount = getDynamicPrediction(hrp)
 
-return hrp.Position + (velocity * predictionAmount)
+	return hrp.Position + (velocity * predictionAmount)
 end
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
