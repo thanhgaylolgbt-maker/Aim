@@ -1212,6 +1212,7 @@ end)
 local EspGui = Instance.new("ScreenGui", player.PlayerGui)
 EspGui.Name = "TargetDiamondESP"
 EspGui.ResetOnSpawn = false
+EspGui.IgnoreGuiInset = true
 
 local diamond = Instance.new("Frame", EspGui)
 diamond.Size = UDim2.new(0,14,0,14)
