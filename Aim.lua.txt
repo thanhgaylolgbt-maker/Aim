@@ -1294,9 +1294,15 @@ RunService.RenderStepped:Connect(function()
     end
 
     -- 3. Cập nhật UI
-    -- Sử dụng AnchorPoint (0.5, 0.5) cho diamond sẽ giúp nó nằm chính xác tâm hơn
     diamond.Position = UDim2.fromOffset(finalPos.X, finalPos.Y)
-    distText.Position = UDim2.fromOffset(finalPos.X, finalPos.Y + 12)
+
+    -- Kiểm tra nếu icon đang ở gần sát mép dưới màn hình (cách khoảng 40 pixel)
+    local textOffsetY = 12 -- Vị trí mặc định (ở dưới icon)
+    if finalPos.Y > (viewSize.Y - 40) then
+        textOffsetY = -28 -- Nhảy lên phía trên icon (14px icon + khoảng cách)
+    end
+
+    distText.Position = UDim2.fromOffset(finalPos.X, finalPos.Y + textOffsetY)
 
     distText.Text = math.floor((aimWorldPos - hrp.Position).Magnitude) .. " m"
     diamond.Visible = true
