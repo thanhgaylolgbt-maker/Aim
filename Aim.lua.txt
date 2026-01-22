@@ -109,8 +109,13 @@ local function getHybridPrediction(hrp, velocity)
 	local distance = (hrp.Position - camPos).Magnitude
 	local speed = velocity.Magnitude
 
+	-- ===== SCALE THEO KHOẢNG CÁCH (CÀNG GẦN CÀNG GIẢM) =====
+	-- 0 stud  -> scale ~ 0.3
+	-- 300 stud-> scale ~ 1.0
+	local distanceScale = math.clamp(distance / 200, 0.35, 1)
+
 	local prediction =
-		BaseHybridPrediction +
+		(BaseHybridPrediction * distanceScale) +
 		(speed * SpeedFactor) +
 		(distance * DistanceFactor)
 
