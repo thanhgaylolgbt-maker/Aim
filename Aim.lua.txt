@@ -1254,49 +1254,48 @@ RunService.RenderStepped:Connect(function()
     local targetHRP = getHRP(target)
     if not targetHRP then return end
 
-    -- 1. Lấy vị trí đích (Ngực/Đầu)
+    -- 1. Vị trí mục tiêu (Aim vào phần ngực/đầu)
     local aimWorldPos = targetHRP.Position + Vector3.new(0, targetHRP.Size.Y * 0.85, 0)
     
     local cam = workspace.CurrentCamera
     local viewSize = cam.ViewportSize
-    -- Lấy phần bù của thanh Topbar (thường là 36px)
-    local inset = GuiService:GetGuiInset() 
-    local screenCenter = Vector2.new(viewSize.X / 2, (viewSize.Y - inset.Y) / 2)
+    local screenCenter = viewSize / 2
 
-    -- 2. Chuyển đổi tọa độ World -> Screen
-    -- Dùng WorldToViewportPoint để có độ chính xác cao hơn cho UI
+    -- 2. Chuyển đổi World -> Screen
+    -- Với IgnoreGuiInset = true, tọa độ ViewportPoint khớp trực tiếp với UI
     local screenPoint, onScreen = cam:WorldToViewportPoint(aimWorldPos)
-    local pos2D = Vector2.new(screenPoint.X, screenPoint.Y - inset.Y)
+    local pos2D = Vector2.new(screenPoint.X, screenPoint.Y)
 
     local finalPos
     local isBehind = screenPoint.Z < 0
 
     if onScreen and not isBehind then
-        -- ✅ TRƯỜNG HỢP TRÊN MÀN HÌNH: Ghim trực tiếp
+        -- ✅ TRÊN MÀN HÌNH: Ghim chuẩn xác vào người
         finalPos = pos2D
     else
-        -- 📐 TRƯỜNG HỢP NGOÀI MÀN HÌNH: Tính toán viền (Clamp)
+        -- 📐 NGOÀI MÀN HÌNH: Tính toán viền màn hình (Clamp)
         local rawPos = pos2D
         if isBehind then
-            -- Nếu địch ở sau lưng, đảo ngược vector để mũi tên chỉ đúng hướng
-            rawPos = screenCenter + (screenCenter - pos2D).Unit * 1000 
+            -- Nếu địch ở sau lưng, đảo ngược hướng để tìm điểm cắt ở viền trước mặt
+            rawPos = screenCenter + (screenCenter - pos2D).Unit * 5000 
         end
 
         local delta = rawPos - screenCenter
         local padding = 20 -- Khoảng cách từ icon đến mép màn hình
         
-        -- Tính toán giới hạn (Safe Zone)
+        -- Giới hạn vùng di chuyển của icon
         local safeX = (viewSize.X / 2) - padding
-        local safeY = (viewSize.Y / 2) - padding - (inset.Y / 2)
+        local safeY = (viewSize.Y / 2) - padding
 
-        -- Tính tỷ lệ scale để đưa điểm ra sát mép
+        -- Tính tỷ lệ để kéo vector delta ra đúng viền màn hình
         local scale = math.min(math.abs(safeX / delta.X), math.abs(safeY / delta.Y))
         finalPos = screenCenter + delta * scale
     end
 
-    -- 3. Cập nhật vị trí UI
+    -- 3. Cập nhật UI
+    -- Sử dụng AnchorPoint (0.5, 0.5) cho diamond sẽ giúp nó nằm chính xác tâm hơn
     diamond.Position = UDim2.fromOffset(finalPos.X, finalPos.Y)
-    distText.Position = UDim2.fromOffset(finalPos.X, finalPos.Y + 15) -- Dịch text xuống một chút cho dễ nhìn
+    distText.Position = UDim2.fromOffset(finalPos.X, finalPos.Y + 12)
 
     distText.Text = math.floor((aimWorldPos - hrp.Position).Magnitude) .. " m"
     diamond.Visible = true
