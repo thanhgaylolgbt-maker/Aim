@@ -1233,6 +1233,8 @@ distText.TextColor3 = Color3.new(1,1,1)
 distText.TextStrokeTransparency = 0.3
 distText.Visible = false
 
+local ICON_Y_OFFSET = -15  -- số âm = đi LÊN (chỉnh -20 → -50 tùy thích)
+
 RunService.RenderStepped:Connect(function()
     local char = player.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -1304,8 +1306,11 @@ RunService.RenderStepped:Connect(function()
         finalPos = eyeCenter + delta * scale
     end
 
-    diamond.Position = UDim2.fromOffset(finalPos.X, finalPos.Y)
-    distText.Position = UDim2.fromOffset(finalPos.X, finalPos.Y + 6)
+    diamond.Position =
+    UDim2.fromOffset(finalPos.X, finalPos.Y + ICON_Y_OFFSET)
+
+distText.Position =
+    UDim2.fromOffset(finalPos.X, finalPos.Y + ICON_Y_OFFSET + 6)
 
     distText.Text =
         math.floor((aimWorldPos - hrp.Position).Magnitude) .. " m"
