@@ -1204,4 +1204,73 @@ RunService.RenderStepped:Connect(function()
     TargetInfoFrame.Visible = false
 end)
 
+--------------------------------------------------
+-- 🔴 TARGET ESP (DIAMOND OFFSCREEN)
+--------------------------------------------------
+local EspGui = Instance.new("ScreenGui", player.PlayerGui)
+EspGui.Name = "TargetDiamondESP"
+EspGui.ResetOnSpawn = false
+
+local diamond = Instance.new("Frame", EspGui)
+diamond.Size = UDim2.new(0,14,0,14)
+diamond.AnchorPoint = Vector2.new(0.5,0.5)
+diamond.BackgroundColor3 = Color3.fromRGB(220,40,40)
+diamond.BorderSizePixel = 0
+diamond.Rotation = 45
+diamond.Visible = false
+
+local stroke = Instance.new("UIStroke", diamond)
+stroke.Thickness = 1.5
+stroke.Color = Color3.fromRGB(0,0,0)
+
+local distText = Instance.new("TextLabel", EspGui)
+distText.Size = UDim2.new(0,60,0,16)
+distText.AnchorPoint = Vector2.new(0.5,0)
+distText.BackgroundTransparency = 1
+distText.TextScaled = true
+distText.Font = Enum.Font.GothamBold
+distText.TextColor3 = Color3.new(1,1,1)
+distText.TextStrokeTransparency = 0.3
+distText.Visible = false
+
+RunService.RenderStepped:Connect(function()
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        diamond.Visible = false
+        distText.Visible = false
+        return
+    end
+
+    local target =
+        (SilentAimPlayersEnabled and PlayerTarget)
+        or (SilentAimNPCsEnabled and NPCTarget)
+
+    if not target then
+        diamond.Visible = false
+        distText.Visible = false
+        return
+    end
+
+    local targetHRP = getHRP(target)
+    if not targetHRP then return end
+
+    local cam = Camera
+    local screenPos, onScreen = cam:WorldToViewportPoint(targetHRP.Position)
+
+    local viewport = cam.ViewportSize
+    local margin = 18
+
+    local x = math.clamp(screenPos.X, margin, viewport.X - margin)
+    local y = math.clamp(screenPos.Y, margin, viewport.Y - margin)
+
+    diamond.Position = UDim2.fromOffset(x, y)
+    distText.Position = UDim2.fromOffset(x, y + 10)
+
+    local dist = math.floor((targetHRP.Position - hrp.Position).Magnitude)
+    distText.Text = dist .. " m"
+
+    diamond.Visible = true
+    distText.Visible = true
+end)
+
 return SilentAimModule
