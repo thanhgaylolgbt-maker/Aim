@@ -112,7 +112,7 @@ local function getHybridPrediction(hrp, velocity)
 	-- ===== SCALE THEO KHOẢNG CÁCH (CÀNG GẦN CÀNG GIẢM) =====
 	-- 0 stud  -> scale ~ 0.3
 	-- 300 stud-> scale ~ 1.0
-	local distanceScale = math.clamp(distance / 200, 0.35, 1)
+	local distanceScale = math.clamp(distance / 175, 0.28, 1)
 
 	local prediction =
 		(BaseHybridPrediction * distanceScale) +
