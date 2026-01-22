@@ -64,6 +64,7 @@ local Booms = {"TAP"}
 local LastPos = {}
 local LastTime = {}
 local LastVelocity = {}
+local LastAcceleration = {}
 
 local maxRange = 800
 local LOW_HP_PRIORITY_DISTANCE = 200
@@ -71,6 +72,12 @@ local LOW_HP_PRIORITY_DISTANCE = 200
 local BasePrediction = 0.05      -- Prediction gốc
 local MinPrediction = 0.01
 local MaxPrediction = 0.35
+-- ===== HYBRID PREDICTION (SPEED + DISTANCE) =====
+local BaseHybridPrediction = 0.025     -- pre nền
+local SpeedFactor          = 0.0015    -- ảnh hưởng tốc độ
+local DistanceFactor       = 0.00025   -- ảnh hưởng khoảng cách
+local AccelerationFactor   = 0.05 -- Độ nhạy với việc đổi hướng
+local MaxHybridPrediction  = 0.35
 
 local GroundCheckDistance = 8    -- Khoảng cách tính là "gần mặt đất"
 
@@ -101,20 +108,25 @@ local function isInAimDistance(plr)
 	return (hrp.Position - myHRP.Position).Magnitude <= MAX_AIM_DISTANCE
 end
 
-local function getDynamicPrediction(hrp)
+local function getHybridPrediction(hrp, velocity)
 	local camPos = Camera.CFrame.Position
 	local distance = (hrp.Position - camPos).Magnitude
+	local speed = velocity.Magnitude
 
-	-- Scale prediction theo khoảng cách
-local prediction
-if distance < 100 then
-	-- giảm dần (curve nhẹ)
-	prediction = BasePrediction + (distance / 90) * 0.55
-else
-	prediction = BasePrediction + (distance / 105)
-end
+	-- ===== SCALE THEO KHOẢNG CÁCH (CÀNG GẦN CÀNG GIẢM) =====
+	-- 0 stud  -> scale ~ 0.3
+	-- 300 stud-> scale ~ 1.0
+	local distanceScale = math.clamp(distance / 175, 0.25, 1)
 
-return math.clamp(prediction, MinPrediction, MaxPrediction)
+local accelPenalty = math.clamp(acceleration * AccelerationFactor, 0, 0.08)
+
+	local prediction =
+		(BaseHybridPrediction * distanceScale) +
+		(speed * SpeedFactor) +
+    	(distance * DistanceFactor) -
+		accelPenalty
+
+	return math.clamp(prediction, MinPrediction, MaxHybridPrediction)
 end
 
 --------------------------------------------------
@@ -180,8 +192,20 @@ local function getPredictedPosition(hrp)
 	local speed = velocity.Magnitude
 	local moveDirMag = humanoid.MoveDirection.Magnitude
 
+-- ===== ACCELERATION (Δv / Δt) =====
+local lastVel = LastVelocity[hrp]
+local acceleration = 0
+
+if lastVel then
+    local dv = (velocity - lastVel)
+    acceleration = dv.Magnitude / dt
+end
+
+LastVelocity[hrp] = velocity
+LastAcceleration[hrp] = acceleration
+
 	-- ===== ĐỨNG YÊN THẬT =====
-	if not PredictionEnabled or (speed < 4 and moveDirMag < 0.08) then
+	if not PredictionEnabled or (speed < 5 and moveDirMag < 0.085) then
 		return hrp.Position
 	end
 
@@ -203,9 +227,9 @@ local function getPredictedPosition(hrp)
 	LastVelocity[hrp] = velocity
 
 	-- ===== PREDICTION THEO KHOẢNG CÁCH (GIỮ LOGIC CŨ CỦA BẠN) =====
-	local predictionAmount = getDynamicPrediction(hrp)
+	local predictionAmount = getHybridPrediction(hrp, velocity)
 
-	return hrp.Position + (velocity * predictionAmount)
+return hrp.Position + (velocity * predictionAmount)
 end
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
