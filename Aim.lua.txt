@@ -76,7 +76,6 @@ local MaxPrediction = 0.35
 local BaseHybridPrediction = 0.025     -- pre nền
 local SpeedFactor          = 0.0015    -- ảnh hưởng tốc độ
 local DistanceFactor       = 0.00025   -- ảnh hưởng khoảng cách
-local AccelerationFactor   = 0.05 -- Độ nhạy với việc đổi hướng
 local MaxHybridPrediction  = 0.35
 
 local GroundCheckDistance = 8    -- Khoảng cách tính là "gần mặt đất"
@@ -118,13 +117,10 @@ local function getHybridPrediction(hrp, velocity)
 	-- 300 stud-> scale ~ 1.0
 	local distanceScale = math.clamp(distance / 175, 0.25, 1)
 
-local accelPenalty = math.clamp(acceleration * AccelerationFactor, 0, 0.08)
-
 	local prediction =
 		(BaseHybridPrediction * distanceScale) +
 		(speed * SpeedFactor) +
-    	(distance * DistanceFactor) -
-		accelPenalty
+    	(distance * DistanceFactor) 
 
 	return math.clamp(prediction, MinPrediction, MaxHybridPrediction)
 end
@@ -191,18 +187,6 @@ local function getPredictedPosition(hrp)
 
 	local speed = velocity.Magnitude
 	local moveDirMag = humanoid.MoveDirection.Magnitude
-
--- ===== ACCELERATION (Δv / Δt) =====
-local lastVel = LastVelocity[hrp]
-local acceleration = 0
-
-if lastVel then
-    local dv = (velocity - lastVel)
-    acceleration = dv.Magnitude / dt
-end
-
-LastVelocity[hrp] = velocity
-LastAcceleration[hrp] = acceleration
 
 	-- ===== ĐỨNG YÊN THẬT =====
 	if not PredictionEnabled or (speed < 5 and moveDirMag < 0.085) then
