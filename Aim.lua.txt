@@ -169,25 +169,6 @@ local function getPredictedPosition(hrp)
 		return hrp.Position
 	end
 
-	-- ===== TÍNH VELOCITY THỰC (khoảng cách + thời gian) =====
-	local now = tick()
-	local lastP = LastPos[hrp]
-	local lastT = LastTime[hrp]
-
-	local velocity
-	if lastP and lastT then
-		local dt = math.clamp(now - lastT, 0.016, 0.2)
-		velocity = (hrp.Position - lastP) / dt
-	else
-		velocity = hrp.AssemblyLinearVelocity
-	end
-
-	LastPos[hrp] = hrp.Position
-	LastTime[hrp] = now
-
-	local speed = velocity.Magnitude
-	local moveDirMag = humanoid.MoveDirection.Magnitude
-
 	-- ===== ĐỨNG YÊN THẬT =====
 	if not PredictionEnabled or (speed < 5 and moveDirMag < 0.085) then
 		return hrp.Position
@@ -198,22 +179,10 @@ local function getPredictedPosition(hrp)
 		velocity = Vector3.new(velocity.X, 0, velocity.Z)
 	end
 
-	-- ===== CHỐNG ZIGZAG =====
-	if LastVelocity[hrp] then
-		local lastVel = LastVelocity[hrp]
-		if lastVel.Magnitude > 0 and velocity.Magnitude > 0 then
-			local dot = velocity.Unit:Dot(lastVel.Unit)
-			if dot < 0.25 then
-				velocity = velocity * 0.6
-			end
-		end
-	end
-	LastVelocity[hrp] = velocity
-
 	-- ===== PREDICTION THEO KHOẢNG CÁCH (GIỮ LOGIC CŨ CỦA BẠN) =====
 	local predictionAmount = getHybridPrediction(hrp, velocity)
 
-return hrp.Position + (velocity * predictionAmount)
+return hrp.Position + (hrp.velocity * predictionAmount)
 end
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
