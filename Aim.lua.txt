@@ -78,7 +78,7 @@ local SpeedFactor          = 0.0015    -- ảnh hưởng tốc độ
 local DistanceFactor       = 0.000375   -- ảnh hưởng khoảng cách
 local MaxHybridPrediction  = 0.35
 
-local GroundCheckDistance = 8    -- Khoảng cách tính là "gần mặt đất"
+local GroundCheckDistance = 10    -- Khoảng cách tính là "gần mặt đất"
 
 local function isNearGround(hrp)
 	local rayParams = RaycastParams.new()
@@ -168,15 +168,6 @@ local function getPredictedPosition(hrp)
 	local humanoid = hrp.Parent:FindFirstChildOfClass("Humanoid")
 	if not humanoid or humanoid.Health <= 0 then
 		return hrp.Position
-	end
-
-	-- 🧹 FIX LEAK: xoá cache khi nhân vật chết
-	if not LastVelocity[hrp .. "_bind"] then
-		LastVelocity[hrp .. "_bind"] = true
-		humanoid.Died:Once(function()
-			LastVelocity[hrp] = nil
-			LastVelocity[hrp .. "_bind"] = nil
-		end)
 	end
 
 	-- Velocity thật
