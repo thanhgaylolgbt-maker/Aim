@@ -169,20 +169,25 @@ local function getPredictedPosition(hrp)
 		return hrp.Position
 	end
 
-	-- ===== ĐỨNG YÊN THẬT =====
+	-- Velocity thật
+	local velocity = hrp.AssemblyLinearVelocity
+	local speed = velocity.Magnitude
+	local moveDirMag = humanoid.MoveDirection.Magnitude
+
+	-- ❌ Không prediction khi đứng yên
 	if not PredictionEnabled or (speed < 5 and moveDirMag < 0.085) then
 		return hrp.Position
 	end
 
-	-- ===== CHỐNG NHẢY / RƠI =====
+	-- ⛔ Chống rơi / nhảy
 	if isNearGround(hrp) then
 		velocity = Vector3.new(velocity.X, 0, velocity.Z)
 	end
 
-	-- ===== PREDICTION THEO KHOẢNG CÁCH (GIỮ LOGIC CŨ CỦA BẠN) =====
+	-- Hybrid prediction (distance + speed)
 	local predictionAmount = getHybridPrediction(hrp, velocity)
 
-return hrp.Position + (hrp.velocity * predictionAmount)
+	return hrp.Position + (velocity * predictionAmount)
 end
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
