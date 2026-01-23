@@ -75,15 +75,16 @@ local MaxPrediction = 0.35
 -- ===== HYBRID PREDICTION (SPEED + DISTANCE) =====
 local BaseHybridPrediction = 0.025     -- pre nền
 local SpeedFactor          = 0.0015    -- ảnh hưởng tốc độ
-local DistanceFactor       = 0.00025   -- ảnh hưởng khoảng cách
+local DistanceFactor       = 0.000375   -- ảnh hưởng khoảng cách
 local MaxHybridPrediction  = 0.35
 
 local GroundCheckDistance = 8    -- Khoảng cách tính là "gần mặt đất"
 
 local function isNearGround(hrp)
 	local rayParams = RaycastParams.new()
-	rayParams.FilterDescendantsInstances = {hrp.Parent}
+
 	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+rayParams.FilterDescendantsInstances = {hrp.Parent, workspace.Enemies}
 
 	local rayResult = Workspace:Raycast(
 		hrp.Position,
@@ -115,7 +116,7 @@ local function getHybridPrediction(hrp, velocity)
 	-- ===== SCALE THEO KHOẢNG CÁCH (CÀNG GẦN CÀNG GIẢM) =====
 	-- 0 stud  -> scale ~ 0.3
 	-- 300 stud-> scale ~ 1.0
-	local distanceScale = math.clamp(distance / 175, 0.25, 1)
+	local distanceScale = math.clamp(distance / 110, 0.25, 1)
 
 	local prediction =
 		(BaseHybridPrediction * distanceScale) +
@@ -169,10 +170,32 @@ local function getPredictedPosition(hrp)
 		return hrp.Position
 	end
 
+	-- 🧹 FIX LEAK: xoá cache khi nhân vật chết
+	if not LastVelocity[hrp .. "_bind"] then
+		LastVelocity[hrp .. "_bind"] = true
+		humanoid.Died:Once(function()
+			LastVelocity[hrp] = nil
+			LastVelocity[hrp .. "_bind"] = nil
+		end)
+	end
+
 	-- Velocity thật
 	local velocity = hrp.AssemblyLinearVelocity
 	local speed = velocity.Magnitude
 	local moveDirMag = humanoid.MoveDirection.Magnitude
+
+	-- ===== CHỐNG ZIGZAG =====
+	if LastVelocity[hrp] then
+		local lastVel = LastVelocity[hrp]
+		if lastVel.Magnitude > 0 and velocity.Magnitude > 0 then
+			local dot = velocity.Unit:Dot(lastVel.Unit)
+			if dot < 0.25 then
+	local damp = math.clamp((dot + 1) / 2, 0.35, 1)
+	velocity *= damp
+end
+		end
+	end
+	LastVelocity[hrp] = velocity
 
 	-- ❌ Không prediction khi đứng yên
 	if not PredictionEnabled or (speed < 5 and moveDirMag < 0.085) then
