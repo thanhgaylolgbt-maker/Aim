@@ -614,12 +614,13 @@ spawn(function()
         OldHook = hookmetamethod(game, "__namecall", function(self, V1, V2, ...)
             local Method = (getnamecallmethod and getnamecallmethod():lower()) or ""
 
--- ✅ CHỈ TẮT AIM KHI DÙNG Z + CẦM YAMA
-if type(V1) == "string"
-and V1 == "Z"
-and currentTool
-and string.lower(currentTool.Name) == "yama sword" then
-    return OldHook(self, V1, V2, ...)
+local args = {...}
+local V1 = args[1]
+
+-- Chỉ tắt aim khi invoke "Z" **và** currentTool.Name == "Yama"
+-- So sánh case-insensitive để an toàn
+if type(V1) == "string" and string.upper(V1) == "Z" and currentTool and string.lower(tostring(currentTool.Name)) == "yama sword" then
+    return OldHook(self, table.unpack(args))
 end
 
             if tostring(self) == "RemoteEvent" and Method == "fireserver" then
