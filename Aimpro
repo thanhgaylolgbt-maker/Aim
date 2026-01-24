@@ -1,0 +1,20 @@
+local SilentAim = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/thanhgaylolgbt-maker/Aim/refs/heads/thanhgaylolgbt-maker-patch-1/Aim.lua.txt"
+))()
+
+-- ===== BẬT MINI TOGGLE =====
+SilentAim:SetMiniTogglePlayerSilentAim(true)
+SilentAim:SetMiniToggleNpcSilentAim(true)
+
+-- ===== CẤU HÌNH CƠ BẢN =====
+SilentAim:SetHighlight(false)
+SilentAim:SetDistanceLimit(800)
+SilentAim:SetLowHPPriority(true)
+
+-- ===== AUTO =====
+SilentAim:SetAutoKen(false)
+SilentAim:SetZSkillorM1(false)
+
+SilentAimModule:SetAimSmoothness(0.35)
+SilentAimModule:SetVelocitySampleCount(4)
+SilentAimModule:EnableProjectileLead(false)
