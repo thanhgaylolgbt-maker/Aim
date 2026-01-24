@@ -528,10 +528,9 @@ local function isNotValidCondition()
     or (currentTool and currentTool.Name == "Portal-Portal")
 end
 
-
 local function isYamaZ()
     return currentTool
-        and currentTool.Name == "Yama"
+        and currentTool.Name == "Yama Sword"
 end
 
 local function startRenderLoop()
