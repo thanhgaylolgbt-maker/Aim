@@ -528,6 +528,12 @@ local function isNotValidCondition()
     or (currentTool and currentTool.Name == "Portal-Portal")
 end
 
+
+local function isYamaZ()
+    return currentTool
+        and currentTool.Name == "Yama"
+end
+
 local function startRenderLoop()
     if renderConnection then return end
 
@@ -633,6 +639,11 @@ spawn(function()
 					end
 				end   
             elseif Method == "invokeserver" then  
+
+if isYamaZ() and V1 == "Z" then
+        return OldHook(self, V1, V2, ...)
+    end
+
 	            if isValidCondition() then
 	                if type(V1) == "string" and table.find(Skills, V1) then  
 	                    if SilentAimPlayersEnabled and PlayersPosition then  
