@@ -72,6 +72,31 @@ local LOW_HP_PRIORITY_DISTANCE = 200
 local BasePrediction = 0.05      -- Prediction gốc
 local MinPrediction = 0.01
 local MaxPrediction = 0.35
+-- ======= IMPROVED PREDICTION =======
+local LastVelSamples = {}        -- [hrp] = {v1,v2,...}
+local LastPredictedPos = {}      -- [hrp] = Vector3
+local VELOCITY_SAMPLE_COUNT = 4
+local AIM_SMOOTHNESS = 0.4
+local PROJECTILE_SPEED = 120
+local ENABLE_PROJECTILE_LEAD = false
+local ENABLE_GRAVITY_COMP = false
+
+local function pushVelocitySample(hrp, vel)
+    if not LastVelSamples[hrp] then LastVelSamples[hrp] = {} end
+    local t = LastVelSamples[hrp]
+    table.insert(t, 1, vel)
+    while #t > VELOCITY_SAMPLE_COUNT do table.remove(t) end
+end
+
+local function averageVelocity(hrp, currentVel)
+    pushVelocitySample(hrp, currentVel)
+    local t = LastVelSamples[hrp]
+    if not t or #t == 0 then return currentVel end
+    local sum = Vector3.new(0,0,0)
+    for _, v in ipairs(t) do sum = sum + v end
+    return sum / #t
+end
+
 -- ===== HYBRID PREDICTION (SPEED + DISTANCE) =====
 local BaseHybridPrediction = 0.025     -- pre nền
 local SpeedFactor          = 0.0015    -- ảnh hưởng tốc độ
@@ -163,45 +188,70 @@ local function clearConnections()
 end
 
 local function getPredictedPosition(hrp)
-	if not hrp then return nil end
+    if not hrp then return nil end
 
-	local humanoid = hrp.Parent:FindFirstChildOfClass("Humanoid")
-	if not humanoid or humanoid.Health <= 0 then
-		return hrp.Position
-	end
+    local humanoid = hrp.Parent:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then
+        LastPredictedPos[hrp] = hrp.Position
+        return hrp.Position
+    end
 
-	-- Velocity thật
-	local velocity = hrp.AssemblyLinearVelocity
-	local speed = velocity.Magnitude
-	local moveDirMag = humanoid.MoveDirection.Magnitude
+    local rawVel = hrp.AssemblyLinearVelocity or Vector3.new(0,0,0)
 
-	-- ===== CHỐNG ZIGZAG =====
-	if LastVelocity[hrp] then
-		local lastVel = LastVelocity[hrp]
-		if lastVel.Magnitude > 0 and velocity.Magnitude > 0 then
-			local dot = velocity.Unit:Dot(lastVel.Unit)
-			if dot < 0.25 then
-	local damp = math.clamp((dot + 1) / 2, 0.35, 1)
-	velocity *= damp
-end
-		end
-	end
-	LastVelocity[hrp] = velocity
+    -- Anti-zigzag
+    if LastVelocity[hrp] then
+        local lastVel = LastVelocity[hrp]
+        if lastVel.Magnitude > 0 and rawVel.Magnitude > 0 then
+            local dot = rawVel.Unit:Dot(lastVel.Unit)
+            if dot < 0.25 then
+                local damp = math.clamp((dot + 1) / 2, 0.35, 1)
+                rawVel = rawVel * damp
+            end
+        end
+    end
 
-	-- ❌ Không prediction khi đứng yên
-	if not PredictionEnabled or (speed < 5 and moveDirMag < 0.085) then
-		return hrp.Position
-	end
+    local vel = averageVelocity(hrp, rawVel)
+    LastVelocity[hrp] = vel
 
-	-- ⛔ Chống rơi / nhảy
-	if isNearGround(hrp) then
-		velocity = Vector3.new(velocity.X, 0, velocity.Z)
-	end
+    local speed = vel.Magnitude
+    local moveDirMag = humanoid.MoveDirection.Magnitude
+    if not PredictionEnabled or (speed < 5 and moveDirMag < 0.085) then
+        LastPredictedPos[hrp] = hrp.Position
+        return hrp.Position
+    end
 
-	-- Hybrid prediction (distance + speed)
-	local predictionAmount = getHybridPrediction(hrp, velocity)
+    if isNearGround(hrp) then
+        vel = Vector3.new(vel.X, 0, vel.Z)
+    end
 
-	return hrp.Position + (velocity * predictionAmount)
+    local camPos = Camera.CFrame.Position
+    local distance = (hrp.Position - camPos).Magnitude
+
+    local predicted
+    if ENABLE_PROJECTILE_LEAD then
+        local travelTime = distance / PROJECTILE_SPEED
+        predicted = hrp.Position + vel * travelTime
+
+        if ENABLE_GRAVITY_COMP then
+            local g = workspace.Gravity or 196.2
+            predicted += Vector3.new(0, 0.5 * g * travelTime * travelTime, 0)
+        end
+    else
+        local predictionAmount = getHybridPrediction(hrp, vel)
+        predicted = hrp.Position + vel * predictionAmount
+    end
+
+    local head = hrp.Parent:FindFirstChild("Head")
+    if head then
+        predicted += Vector3.new(0, head.Size.Y * 0.25, 0)
+    end
+
+    local lastPred = LastPredictedPos[hrp] or hrp.Position
+    local alpha = math.clamp(1 - AIM_SMOOTHNESS, 0.05, 1)
+    local finalPred = lastPred:Lerp(predicted, alpha)
+
+    LastPredictedPos[hrp] = finalPred
+    return finalPred
 end
 
 local function createMiniToggle(name, position, stateVarRef, realVarSetter)
@@ -1309,5 +1359,33 @@ task.spawn(function()
         startRenderLoop()
     end
 end)
+
+-- ===== SILENTAIM CONFIG API =====
+
+function SilentAimModule:SetAimSmoothness(val)
+    if type(val) == "number" then
+        AIM_SMOOTHNESS = math.clamp(val, 0, 0.95)
+    end
+end
+
+function SilentAimModule:SetVelocitySampleCount(n)
+    if type(n) == "number" and n >= 1 then
+        VELOCITY_SAMPLE_COUNT = math.floor(n)
+    end
+end
+
+function SilentAimModule:SetProjectileSpeed(spd)
+    if type(spd) == "number" then
+        PROJECTILE_SPEED = spd
+    end
+end
+
+function SilentAimModule:EnableProjectileLead(state)
+    ENABLE_PROJECTILE_LEAD = not not state
+end
+
+function SilentAimModule:EnableGravityCompensation(state)
+    ENABLE_GRAVITY_COMP = not not state
+end
 
 return SilentAimModule
