@@ -69,6 +69,8 @@ local LastAcceleration = {}
 local maxRange = 800
 local LOW_HP_PRIORITY_DISTANCE = 200
 
+local MAX_CAM_PITCH = 75 -- độ
+
 local BasePrediction = 0.05      -- Prediction gốc
 local MinPrediction = 0.01
 local MaxPrediction = 0.35
@@ -104,6 +106,11 @@ local DistanceFactor       = 0.000375   -- ảnh hưởng khoảng cách
 local MaxHybridPrediction  = 0.35
 
 local GroundCheckDistance = 10    -- Khoảng cách tính là "gần mặt đất"
+
+local function getCameraPitch()
+    local look = Camera.CFrame.LookVector
+    return math.deg(math.asin(look.Y)) -- -90 → +90
+end
 
 local function isNearGround(hrp)
 	local rayParams = RaycastParams.new()
@@ -599,24 +606,29 @@ local function startRenderLoop()
         local targetModel = nil
         local lookTargetPos = nil
 
-        if SilentAimPlayersEnabled then
-            local targetplayer = getClosestplayer(lpHRP)
-            if targetplayer and targetplayer ~= player and targetplayer.Character then
-                playersaimbot = targetplayer.Name
-                PlayerTarget = targetplayer.Character
-                local hrp = getHRP(targetplayer.Character)
-                PlayersPosition = getPredictedPosition(hrp)
-                lookTargetPos = PlayersPosition
-                targetModel = targetplayer.Character
-                applyHighlight(targetModel, "player")
-            else
-                playersaimbot, PlayersPosition = nil, nil
-                PlayerTarget = nil
-            end
-        elseif currentTargetType == "player" then
-            playersaimbot, PlayersPosition = nil, nil
-            clearHighlight()
-        end
+        local pitch = getCameraPitch()
+local allowAim = pitch < MAX_CAM_PITCH
+
+if SilentAimPlayersEnabled and allowAim then
+    local targetplayer = getClosestplayer(lpHRP)
+    if targetplayer and targetplayer ~= player and targetplayer.Character then
+        playersaimbot = targetplayer.Name
+        PlayerTarget = targetplayer.Character
+        local hrp = getHRP(targetplayer.Character)
+        PlayersPosition = getPredictedPosition(hrp)
+        lookTargetPos = PlayersPosition
+        targetModel = targetplayer.Character
+        applyHighlight(targetModel, "player")
+    else
+        playersaimbot, PlayersPosition = nil, nil
+        PlayerTarget = nil
+    end
+elseif currentTargetType == "player" then
+    -- ❌ AIM BỊ TẮT DO CAM ≥ 75° HOẶC TOGGLE OFF
+    playersaimbot, PlayersPosition = nil, nil
+    PlayerTarget = nil
+    clearHighlight()
+end
 
         if SilentAimNPCsEnabled then  
             local closestNPC = getClosestNPC(lpHRP)  
