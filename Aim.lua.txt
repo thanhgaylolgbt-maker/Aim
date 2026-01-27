@@ -582,11 +582,6 @@ local function isNotValidCondition()
     or (currentTool and currentTool.Name == "Portal-Portal")
 end
 
-local function isYama()
-    return currentTool
-        and currentTool.Name == "Yama"
-end
-
 local function startRenderLoop()
     if renderConnection then return end
 
@@ -596,29 +591,23 @@ local function startRenderLoop()
         local lpHRP = lpChar:FindFirstChild("HumanoidRootPart")
         if not lpHRP then return end
 
-        -- ---- CHECK CAMERA PITCH: chỉ khi cầm Yama thì mới áp dụng ----
-        -- Nếu nhìn lên (pitch) > CAMERA_PITCH_LIMIT và đang cầm Yama -> tắt aim cho frame này
-        if isYama() then
-            local cam = Camera or workspace.CurrentCamera
-            if cam and cam.CFrame then
-                local lookY = cam.CFrame.LookVector.Y or 0
-                local pitchDeg = math.deg(math.asin(lookY))  -- -90..90, + là nhìn lên
-                if pitchDeg > CAMERA_PITCH_LIMIT then
-                    AimDisabledByPitch = true
+                -- ---- CHECK CAMERA PITCH: nếu nhìn lên > CAMERA_PITCH_LIMIT thì tắt aim tạm ----
+        local cam = Camera or workspace.CurrentCamera
+        if cam and cam.CFrame then
+            local lookY = cam.CFrame.LookVector.Y or 0
+            local pitchDeg = math.deg(math.asin(lookY))  -- -90..90, + là nhìn lên
+            if pitchDeg > CAMERA_PITCH_LIMIT then
+                -- tắt aim trong khung hình này
+                AimDisabledByPitch = true
 
-                    -- xóa target tạm thời, không aim trong frame này
-                    playersaimbot, PlayersPosition, PlayerTarget = nil, nil, nil
-                    NPCaimbot, NPCPosition, NPCTarget = nil, nil, nil
-                    clearHighlight()
+                playersaimbot, PlayersPosition, PlayerTarget = nil, nil, nil
+                NPCaimbot, NPCPosition, NPCTarget = nil, nil, nil
+                clearHighlight()
 
-                    return -- thoát callback frame, không thực hiện tìm target / apply aim
-                else
-                    AimDisabledByPitch = false
-                end
+                return -- thoát callback frame, không thực hiện tìm target / apply aim
+            else
+                AimDisabledByPitch = false
             end
-        else
-            -- nếu không cầm Yama thì reset flag (đảm bảo aim bình thường)
-            AimDisabledByPitch = false
         end
 
         if not SilentAimPlayersEnabled and not SilentAimNPCsEnabled then
