@@ -598,7 +598,7 @@ local function startRenderLoop()
 
         -- ---- CHECK CAMERA PITCH: chỉ khi cầm Yama thì mới áp dụng ----
         -- Nếu nhìn lên (pitch) > CAMERA_PITCH_LIMIT và đang cầm Yama -> tắt aim cho frame này
-        if isYamaZ() then
+        if isYama() then
             local cam = Camera or workspace.CurrentCamera
             if cam and cam.CFrame then
                 local lookY = cam.CFrame.LookVector.Y or 0
