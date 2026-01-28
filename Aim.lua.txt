@@ -600,8 +600,8 @@ local function startRenderLoop()
                 -- tắt aim trong khung hình này
                 AimDisabledByPitch = true
 
-                playersaimbot = nil
-                NPCaimbot = nil
+                playersaimbot, PlayersPosition, PlayerTarget = nil, nil, nil
+                NPCaimbot, NPCPosition, NPCTarget = nil, nil, nil
                 clearHighlight()
 
                 return -- thoát callback frame, không thực hiện tìm target / apply aim
