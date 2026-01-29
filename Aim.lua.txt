@@ -66,6 +66,91 @@ local LastTime = {}
 local LastVelocity = {}
 local LastAcceleration = {}
 
+-- ======= PREDICTION CIRCLE (visible through walls) =======
+local PredIndicators = {} -- [hrp] = {part=Part, gui=BillboardGui, frame=Frame}
+
+local function makePredIndicatorFor(hrp)
+    if not hrp then return nil end
+    if PredIndicators[hrp] then return PredIndicators[hrp] end
+
+    -- tạo part tàng hình ở world (Adornee)
+    local p = Instance.new("Part")
+    p.Name = "PredMarker_Part"
+    p.Anchored = true
+    p.CanCollide = false
+    p.Transparency = 1
+    p.Size = Vector3.new(0.5,0.5,0.5)
+    p.Parent = workspace
+
+    -- BillboardGui (AlwaysOnTop để nhìn xuyên tường)
+    local bg = Instance.new("BillboardGui")
+    bg.Name = "PredMarker_GUI"
+    bg.Adornee = p
+    bg.AlwaysOnTop = true
+    bg.LightInfluence = 0
+    bg.MaxDistance = 10000
+    bg.Size = UDim2.new(0, 120, 0, 120) -- sẽ cập nhật theo khoảng cách
+    bg.StudsOffset = Vector3.new(0, 0, 0)
+    bg.Parent = player:WaitForChild("PlayerGui")
+
+    -- vòng tròn đỏ mờ
+    local f = Instance.new("Frame", bg)
+    f.Size = UDim2.new(1,0,1,0)
+    f.BackgroundColor3 = Color3.fromRGB(220, 40, 40)
+    f.BackgroundTransparency = 0.55 -- hơi mờ
+    f.BorderSizePixel = 0
+
+    local uc = Instance.new("UICorner", f)
+    uc.CornerRadius = UDim.new(1, 0) -- tròn hoàn toàn
+
+    PredIndicators[hrp] = { part = p, gui = bg, frame = f }
+    return PredIndicators[hrp]
+end
+
+local function removePredIndicatorFor(hrp)
+    if not hrp then return end
+    local info = PredIndicators[hrp]
+    if info then
+        pcall(function()
+            if info.gui and info.gui.Parent then info.gui:Destroy() end
+            if info.part and info.part.Parent then info.part:Destroy() end
+        end)
+        PredIndicators[hrp] = nil
+    end
+end
+
+local function removeAllPredIndicators()
+    for hrp, _ in pairs(PredIndicators) do
+        removePredIndicatorFor(hrp)
+    end
+end
+
+-- Cập nhật vị trí & kích thước theo khoảng cách
+local function updatePredIndicator(hrp, worldPos)
+    if not hrp or not worldPos then return end
+    local camPos = (Camera and Camera.CFrame and Camera.CFrame.Position) or workspace.CurrentCamera.CFrame.Position
+    local dist = math.max(1, (camPos - worldPos).Magnitude)
+
+    local info = makePredIndicatorFor(hrp)
+    if not info then return end
+
+    -- di chuyển part đến vị trí dự đoán
+    pcall(function() info.part.CFrame = CFrame.new(worldPos) end)
+
+    -- kích thước hiển thị: cố gắng tiệm cận kích thước người địch
+    -- công thức: càng gần -> lớn, càng xa -> nhỏ; giới hạn 40..380 px
+    local targetHeight = hrp.Size.Y or 2
+    local pixel = math.clamp(math.floor((targetHeight / dist) * 2000), 40, 380)
+
+    info.gui.Size = UDim2.new(0, pixel, 0, pixel)
+    -- offset chút để vòng nằm chênh lên trên ngực/đầu
+    info.gui.StudsOffset = Vector3.new(0, targetHeight * 0.85, 0)
+end
+
+-- cleanup khi script tắt / dừng
+-- (gọi khi stopRenderLoop() hoặc khi cần clear tất cả)
+-- removeAllPredIndicators()
+
 local maxRange = 800
 local LOW_HP_PRIORITY_DISTANCE = 200
 
@@ -624,13 +709,18 @@ local function startRenderLoop()
                 PlayerTarget = targetplayer.Character
                 local hrp = getHRP(targetplayer.Character)
                 PlayersPosition = getPredictedPosition(hrp)
+updatePredCircle(hrp, PlayersPosition)
                 lookTargetPos = PlayersPosition
                 targetModel = targetplayer.Character
                 applyHighlight(targetModel, "player")
             else
-                playersaimbot, PlayersPosition = nil, nil
-                PlayerTarget = nil
-            end
+    if PlayerTarget then
+        local oldHRP = getHRP(PlayerTarget)
+        removePredCircle(oldHRP)
+    end
+    playersaimbot, PlayersPosition = nil, nil
+    PlayerTarget = nil
+end
         elseif currentTargetType == "player" then
             playersaimbot, PlayersPosition = nil, nil
             clearHighlight()
