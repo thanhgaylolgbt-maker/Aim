@@ -113,7 +113,7 @@ local function isNearGround(hrp)
 	local rayParams = RaycastParams.new()
 
 	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-    rayParams.FilterDescendantsInstances = {hrp.Parent, workspace.Enemies}
+rayParams.FilterDescendantsInstances = {hrp.Parent, workspace.Enemies}
 
 	local rayResult = Workspace:Raycast(
 		hrp.Position,
@@ -464,43 +464,43 @@ local function getClosestplayer(lpHRP)
 
 	-- ===== KHÔNG PIN =====
 
-    -- 🔴 ƯU TIÊN LOW HP TRONG 150m
-    local lowHpTarget = getLowestHPPlayerInRange(lpHRP, LOW_HP_PRIORITY_DISTANCE)
-    if lowHpTarget and isInAimDistance(lowHpTarget) then
-        return lowHpTarget
-    end
+-- 🔴 ƯU TIÊN LOW HP TRONG 150m
+local lowHpTarget = getLowestHPPlayerInRange(lpHRP, LOW_HP_PRIORITY_DISTANCE)
+if lowHpTarget and isInAimDistance(lowHpTarget) then
+    return lowHpTarget
+end
 
-    -- 🟡 KHÔNG CÓ → AIM NGƯỜI GẦN NHẤT
-    local closest = nil
-    local closestDist = math.huge
+-- 🟡 KHÔNG CÓ → AIM NGƯỜI GẦN NHẤT
+local closest = nil
+local closestDist = math.huge
 
-    for _, pl in ipairs(Players:GetPlayers()) do
-        if pl ~= player
-        and not IgnoredPlayers[pl.Name]
-        and isEnemy(pl)
-        and pl.Character then
+for _, pl in ipairs(Players:GetPlayers()) do
+    if pl ~= player
+    and not IgnoredPlayers[pl.Name]
+    and isEnemy(pl)
+    and pl.Character then
 
-            local hrp = getHRP(pl.Character)
-            local hum = pl.Character:FindFirstChildWhichIsA("Humanoid")
+        local hrp = getHRP(pl.Character)
+        local hum = pl.Character:FindFirstChildWhichIsA("Humanoid")
 
-            if hrp and hum and hum.Health > 0 and isInAimDistance(pl) then
-                local dist = (hrp.Position - lpHRP.Position).Magnitude
-                if dist < closestDist then
-                    closestDist = dist
-                    closest = pl
-                end
+        if hrp and hum and hum.Health > 0 and isInAimDistance(pl) then
+            local dist = (hrp.Position - lpHRP.Position).Magnitude
+            if dist < closestDist then
+                closestDist = dist
+                closest = pl
             end
         end
     end
+end
 
-    return closest
+return closest
 end
 
 local function getClosestNPC(lpHRP)
     if not lpHRP then return nil end
 
     local enemiesFolder = workspace:FindFirstChild("Enemies")
-    if not enemiesFolder then return nil
+    if not enemiesFolder then return nil end
 
     local closest = nil
     local closestDist = math.huge
@@ -582,7 +582,6 @@ local function isNotValidCondition()
     or (currentTool and currentTool.Name == "Portal-Portal")
 end
 
--- =========================  (PHẦN SILENTAIM RENDER LOOP + HOOKS)  =========================
 local function startRenderLoop()
     if renderConnection then return end
 
@@ -592,7 +591,7 @@ local function startRenderLoop()
         local lpHRP = lpChar:FindFirstChild("HumanoidRootPart")
         if not lpHRP then return end
 
-        -- ---- CHECK CAMERA PITCH: nếu nhìn lên > CAMERA_PITCH_LIMIT thì tắt aim tạm ----
+                -- ---- CHECK CAMERA PITCH: nếu nhìn lên > CAMERA_PITCH_LIMIT thì tắt aim tạm ----
         local cam = Camera or workspace.CurrentCamera
         if cam and cam.CFrame then
             local lookY = cam.CFrame.LookVector.Y or 0
@@ -1402,238 +1401,5 @@ end
 function SilentAimModule:EnableGravityCompensation(state)
     ENABLE_GRAVITY_COMP = not not state
 end
-
--- =========================
--- NEW: LOCK CAMERA FEATURE (integrated)
--- - dùng chung cách chọn target: getClosestplayer(lpHRP)
--- - chỉ target player
--- =========================
-
--- CONFIG (có thể thay từ code bằng API)
-local LOCK_RANGE = 195       -- phạm vi tìm target (stud)
-local MIN_DISTANCE = 8       -- nếu cách <= MIN_DISTANCE thì tắt lock
-local LOCK_TIME = 3          -- timeout (giữ nguyên 3s). Set = math.huge để vô hiệu hóa timeout
-
--- STATE
-local lockEnabled = false
-local lockConnection = nil
-local lockOldCameraType = nil
-local lockOldCameraSubject = nil
-local lockCurrentTarget = nil    -- character model
-local lockStartTime = nil
-local lockDeathConn = nil
-local lockCharAddedConn = nil
-
-local function getMyHRP()
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        return player.Character.HumanoidRootPart
-    end
-    return nil
-end
-
-local function safeRestoreCameraLock()
-    local cam = Camera or workspace.CurrentCamera
-    if not cam then return end
-
-    if lockOldCameraType then
-        pcall(function() cam.CameraType = lockOldCameraType end)
-    end
-
-    if lockOldCameraSubject then
-        local ok, _ = pcall(function() cam.CameraSubject = lockOldCameraSubject end)
-        if not ok then
-            local hum = nil
-            if player.Character then
-                hum = player.Character:FindFirstChildOfClass("Humanoid")
-            end
-            if hum then
-                pcall(function() cam.CameraSubject = hum end)
-            end
-        end
-    end
-end
-
-local function stopLock()
-    if not lockEnabled then return end
-
-    lockEnabled = false
-
-    if lockConnection then
-        lockConnection:Disconnect()
-        lockConnection = nil
-    end
-
-    -- restore camera
-    safeRestoreCameraLock()
-
-    -- clear state
-    lockCurrentTarget = nil
-    lockStartTime = nil
-
-    -- disconnect death/char listener for lock
-    if lockDeathConn then
-        pcall(function() lockDeathConn:Disconnect() end)
-        lockDeathConn = nil
-    end
-    if lockCharAddedConn then
-        pcall(function() lockCharAddedConn:Disconnect() end)
-        lockCharAddedConn = nil
-    end
-end
-
-local function onCharacterForLock(char)
-    if lockDeathConn then
-        pcall(function() lockDeathConn:Disconnect() end)
-        lockDeathConn = nil
-    end
-
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        lockDeathConn = humanoid.Died:Connect(function()
-            stopLock()
-        end)
-    end
-end
-
-local function startLock()
-    if lockEnabled then return end
-
-    -- store old camera state
-    local cam = Camera or workspace.CurrentCamera
-    lockOldCameraType = (cam and cam.CameraType) or Enum.CameraType.Custom
-    lockOldCameraSubject = (cam and cam.CameraSubject) or nil
-
-    lockEnabled = true
-    lockStartTime = tick()
-    lockCurrentTarget = nil
-
-    -- connect character death watcher for lock restore
-    if player.Character then
-        onCharacterForLock(player.Character)
-    end
-    if lockCharAddedConn then
-        pcall(function() lockCharAddedConn:Disconnect() end)
-        lockCharAddedConn = nil
-    end
-    lockCharAddedConn = player.CharacterAdded:Connect(onCharacterForLock)
-
-    lockConnection = RunService.RenderStepped:Connect(function()
-        if not lockEnabled then return end
-
-        -- timeout handling
-        if LOCK_TIME and LOCK_TIME > 0 and tick() - lockStartTime >= LOCK_TIME then
-            stopLock()
-            return
-        end
-
-        local myHRP = getMyHRP()
-        if not myHRP then
-            stopLock()
-            return
-        end
-
-        -- chọn target dùng chung hàm getClosestplayer
-        local candidate = getClosestplayer(myHRP)  -- trả về Player object hoặc nil
-        local enemyChar = candidate and candidate.Character or nil
-
-        -- nếu chưa có target thì chỉ gán, không đổi camera
-        if not lockCurrentTarget and enemyChar then
-            lockCurrentTarget = enemyChar
-        end
-
-        if not lockCurrentTarget then
-            return -- chưa có target -> không can thiệp camera
-        end
-
-        -- validate
-        if not lockCurrentTarget.Parent or not lockCurrentTarget:FindFirstChild("HumanoidRootPart") then
-            stopLock()
-            return
-        end
-
-        local targetHRP = lockCurrentTarget:FindFirstChild("HumanoidRootPart")
-        if not targetHRP then
-            stopLock()
-            return
-        end
-
-        local d = (targetHRP.Position - myHRP.Position).Magnitude
-
-        if d <= MIN_DISTANCE or d > LOCK_RANGE then
-            stopLock()
-            return
-        end
-
-        -- THỰC SỰ LOCK CAMERA
-        if cam then
-            pcall(function()
-                cam.CameraType = Enum.CameraType.Scriptable
-                local pos = targetHRP.Position
-                cam.CFrame = CFrame.new(
-                    pos + Vector3.new(0, 3, -6),
-                    pos + Vector3.new(0, 2, 0)
-                )
-            end)
-        end
-    end)
-end
-
--- GUI: thêm 1 nút LOCK nhỏ (bên cạnh PlusBtn)
-local function createLockButton()
-    local lockGui = Instance.new("ScreenGui", player.PlayerGui)
-    lockGui.Name = "AimLockGui"
-    lockGui.ResetOnSpawn = false
-
-    local lockBtn = Instance.new("TextButton", lockGui)
-    lockBtn.Size = UDim2.new(0,80,0,30)
-    lockBtn.Position = UDim2.new(0,40,0,25)
-    lockBtn.Text = "LOCK : OFF"
-    lockBtn.TextScaled = false
-    lockBtn.Font = Enum.Font.GothamBold
-    lockBtn.BackgroundColor3 = Color3.fromRGB(30,30,30)
-    lockBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    lockBtn.BorderSizePixel = 0
-    Instance.new("UICorner", lockBtn).CornerRadius = UDim.new(0,6)
-
-    lockBtn.MouseButton1Click:Connect(function()
-        if lockEnabled then
-            stopLock()
-            lockBtn.Text = "LOCK : OFF"
-            lockBtn.BackgroundColor3 = Color3.fromRGB(30,30,30)
-        else
-            startLock()
-            lockBtn.Text = "LOCK : ON"
-            lockBtn.BackgroundColor3 = Color3.fromRGB(160,60,60)
-        end
-    end)
-end
-
--- tạo nút ngay (không tạo lại nếu đã có)
-pcall(function()
-    if not player.PlayerGui:FindFirstChild("AimLockGui") then
-        createLockButton()
-    end
-end)
-
--- API để điều khiển từ code
-function SilentAimModule:SetLockConfig(range, minDist, timeSec)
-    if type(range) == "number" then LOCK_RANGE = range end
-    if type(minDist) == "number" then MIN_DISTANCE = minDist end
-    if type(timeSec) == "number" then LOCK_TIME = timeSec end
-end
-
-function SilentAimModule:StartLock()
-    startLock()
-end
-
-function SilentAimModule:StopLock()
-    stopLock()
-end
-
-function SilentAimModule:IsLockEnabled()
-    return lockEnabled
-end
-
--- ========================= END LOCK CAMERA FEATURE =========================
 
 return SilentAimModule
