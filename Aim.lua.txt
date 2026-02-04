@@ -69,8 +69,6 @@ local LastAcceleration = {}
 local maxRange = 800
 local LOW_HP_PRIORITY_DISTANCE = 200
 
-local NO_PREDICTION_DISTANCE = 5 -- <= 5 stud thì không đoán hướng
-
 local BasePrediction = 0.05      -- Prediction gốc
 local MinPrediction = 0.01
 local MaxPrediction = 0.35
@@ -232,11 +230,6 @@ local function getPredictedPosition(hrp)
 
     local camPos = Camera.CFrame.Position
     local distance = (hrp.Position - camPos).Magnitude
-
-if distance <= NO_PREDICTION_DISTANCE then
-    LastPredictedPos[hrp] = hrp.Position
-    return hrp.Position
-end
 
     local predicted
     if ENABLE_PROJECTILE_LEAD then
