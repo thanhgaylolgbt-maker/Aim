@@ -3,17 +3,17 @@ local SilentAim = loadstring(game:HttpGet(
 ))()
 
 -- ===== BẬT MINI TOGGLE =====
-SilentAim:SetMiniTogglePlayerSilentAim(true)
-SilentAim:SetMiniToggleNpcSilentAim(true)
+SilentAimModule:SetMiniTogglePlayerSilentAim(true)
+SilentAimModule:SetMiniToggleNpcSilentAim(true)
 
 -- ===== CẤU HÌNH CƠ BẢN =====
-SilentAim:SetHighlight(false)
-SilentAim:SetDistanceLimit(800)
-SilentAim:SetLowHPPriority(true)
+SilentAimModule:SetHighlight(false)
+SilentAimModule:SetDistanceLimit(800)
+SilentAimModule:SetLowHPPriority(true)
 
 -- ===== AUTO =====
-SilentAim:SetAutoKen(false)
-SilentAim:SetZSkillorM1(true)
+SilentAimModule:SetAutoKen(false)
+SilentAimModule:SetZSkillorM1(true)
 
 SilentAimModule:SetAimSmoothness(0.3)
 SilentAimModule:SetVelocitySampleCount(4)
