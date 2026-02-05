@@ -15,6 +15,6 @@ SilentAim:SetLowHPPriority(true)
 SilentAim:SetAutoKen(false)
 SilentAim:SetZSkillorM1(false)
 
-SilentAim:SetAimSmoothness(0.3)
+SilentAim:SetAimSmoothness(0.4)
 SilentAim:SetVelocitySampleCount(4)
 SilentAim:EnableProjectileLead(false)
