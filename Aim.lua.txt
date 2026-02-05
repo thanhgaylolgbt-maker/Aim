@@ -219,7 +219,7 @@ local function getPredictedPosition(hrp)
 
     local speed = vel.Magnitude
     local moveDirMag = humanoid.MoveDirection.Magnitude
-    if not PredictionEnabled or (speed < 5 and moveDirMag < 0.115) then
+    if not PredictionEnabled or (speed < 5 and moveDirMag < 0.085) then
         LastPredictedPos[hrp] = hrp.Position
         return hrp.Position
     end
