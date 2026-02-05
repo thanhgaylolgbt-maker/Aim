@@ -26,7 +26,7 @@ local Services = setmetatable({}, {
     end
 });
 
-local SilentAimPlayersEnabled = true
+local SilentAimPlayersEnabled = false
 local SilentAimNPCsEnabled = false
 local UserWantsplayerAim = true
 local UserWantsNPCAim = false
@@ -1364,14 +1364,6 @@ RunService.RenderStepped:Connect(function()
     distText.Text = math.floor((aimWorldPos - hrp.Position).Magnitude) .. " m"
     diamond.Visible = true
     distText.Visible = true
-end)
-
--- 🔥 AUTO START AIM PLAYER
-task.spawn(function()
-    task.wait(0.1)
-    if SilentAimPlayersEnabled then
-        startRenderLoop()
-    end
 end)
 
 -- ===== SILENTAIM CONFIG API =====
