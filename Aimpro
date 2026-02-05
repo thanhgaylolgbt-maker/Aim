@@ -13,7 +13,7 @@ SilentAim:SetLowHPPriority(true)
 
 -- ===== AUTO =====
 SilentAim:SetAutoKen(false)
-SilentAim:SetZSkillorM1(false)
+SilentAim:SetZSkillorM1(true)
 
 SilentAim:SetAimSmoothness(0.35)
 SilentAim:SetVelocitySampleCount(4)
