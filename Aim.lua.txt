@@ -685,40 +685,34 @@ spawn(function()
     if ok and hookMeta then
         setreadonly(hookMeta, false)
         local OldHook
-        OldHook = hookmetamethod(game, "__namecall", function(self, V1, V2, ...)
-            local Method = (getnamecallmethod and getnamecallmethod():lower()) or ""
+        OldHook = hookmetamethod(game, "__namecall", function(self, ...)
+    local args = {...}
+    local Method = getnamecallmethod():lower()
 
-            if tostring(self) == "RemoteEvent" and Method == "fireserver" then
-                if typeof(V1) == "Vector3" then
-                    if SilentAimPlayersEnabled and PlayersPosition then
-                        return OldHook(self, PlayersPosition, V2, ...)
-                    elseif SilentAimNPCsEnabled and NPCPosition then
-                        return OldHook(self, NPCPosition, V2, ...)
-                    end
-                end				
-                if type(V1) == "string" and table.find(Booms, V1) then
-                    if ZSkillorM1 then 
-                        if SilentAimPlayersEnabled and PlayersPosition then
-                            return OldHook(self, V1, PlayersPosition, nil, ...)
-                        elseif SilentAimNPCsEnabled and NPCPosition then
-                            return OldHook(self, V1, NPCPosition, nil, ...)
-                        end
-                    end
-                end   
-            elseif Method == "invokeserver" then  
-                if isValidCondition() then
-                    if type(V1) == "string" and table.find(Skills, V1) then  
-                        if SilentAimPlayersEnabled and PlayersPosition then  
-                            return OldHook(self, V1, PlayersPosition, nil, ...)
-                        elseif SilentAimNPCsEnabled and NPCPosition then
-                            return OldHook(self, V1, NPCPosition, nil, ...)
-                        end  
-                    end    
-                end				
+    if self:IsA("RemoteEvent") and Method == "fireserver" then
+        if typeof(args[1]) == "Vector3" then
+            if SilentAimPlayersEnabled and PlayersPosition then
+                args[1] = PlayersPosition
+                return OldHook(self, unpack(args))
+            elseif SilentAimNPCsEnabled and NPCPosition then
+                args[1] = NPCPosition
+                return OldHook(self, unpack(args))
             end
-            
-            return OldHook(self, V1, V2, ...)
-        end)
+        end
+
+        if type(args[1]) == "string" and table.find(Booms, args[1]) then
+            if ZSkillorM1 then
+                if SilentAimPlayersEnabled and PlayersPosition then
+                    return OldHook(self, args[1], PlayersPosition, nil)
+                elseif SilentAimNPCsEnabled and NPCPosition then
+                    return OldHook(self, args[1], NPCPosition, nil)
+                end
+            end
+        end
+    end
+
+    return OldHook(self, ...)
+end)
         setreadonly(hookMeta, true)
     end
 end)
