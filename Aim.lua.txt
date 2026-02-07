@@ -1,7 +1,5 @@
 local SilentAimModule = {}
 
-local VSkillModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/thanhgaylolgbt-maker/Aim/refs/heads/thanhgaylolgbt-maker-patch-1/Vskillmodule"))()
-
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
@@ -442,11 +440,10 @@ end
 local function getClosestplayer(lpHRP)
 	-- ===== CÓ PIN → ƯU TIÊN PIN =====
 	if PinnedPlayer then
-		if not IgnoredPlayers[PinnedPlayer.Name]
-		and PinnedPlayer.Character then
+		if not IgnoredPlayers[PinnedPlayer.Name] then
 
-			local hum = PinnedPlayer.Character:FindFirstChildWhichIsA("Humanoid")
-			local hrp = getHRP(PinnedPlayer.Character)
+			local hum = PinnedPlayer.Character and PinnedPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+			local hrp = PinnedPlayer.Character and getHRP(PinnedPlayer.Character)
 
 			if hum and hum.Health > 0 and hrp then
 				if isInAimDistance(PinnedPlayer) then
@@ -455,45 +452,49 @@ local function getClosestplayer(lpHRP)
 					-- PIN NGOÀI TẦM → KHÔNG AIM AI
 					return nil
 				end
+			else
+				-- Player có thể đang chết hoặc chưa respawn — giữ PinnedPlayer (không huỷ),
+				-- nhưng tạm thời không trả về target cho đến khi họ có character hợp lệ.
+				return nil
 			end
+		else
+			-- Ignored → không aim vào pinned
+			return nil
 		end
-
-		-- PIN KHÔNG HỢP LỆ → HUỶ PIN
-		PinnedPlayer = nil
 	end
 
 	-- ===== KHÔNG PIN =====
 
--- 🔴 ƯU TIÊN LOW HP TRONG 150m
-local lowHpTarget = getLowestHPPlayerInRange(lpHRP, LOW_HP_PRIORITY_DISTANCE)
-if lowHpTarget and isInAimDistance(lowHpTarget) then
-    return lowHpTarget
-end
+	-- 🔴 ƯU TIÊN LOW HP TRONG 150m
+	local lowHpTarget = getLowestHPPlayerInRange(lpHRP, LOW_HP_PRIORITY_DISTANCE)
+	if lowHpTarget and isInAimDistance(lowHpTarget) then
+	    return lowHpTarget
+	end
 
--- 🟡 KHÔNG CÓ → AIM NGƯỜI GẦN NHẤT
-local closest = nil
-local closestDist = math.huge
+	-- 🟡 KHÔNG CÓ → AIM NGƯỜI GẦN NHẤT
+	local closest = nil
+	local closestDist = math.huge
 
-for _, pl in ipairs(Players:GetPlayers()) do
-    if pl ~= player
-    and not IgnoredPlayers[pl.Name]
-    and isEnemy(pl)
-    and pl.Character then
+	for _, pl in ipairs(Players:GetPlayers()) do
+	    if pl ~= player
+	    and not IgnoredPlayers[pl.Name]
+	    and isEnemy(pl)
+	    and pl.Character then
 
-        local hrp = getHRP(pl.Character)
-        local hum = pl.Character:FindFirstChildWhichIsA("Humanoid")
+	        local hrp = getHRP(pl.Character)
+	        local hum = pl.Character:FindFirstChildWhichIsA("Humanoid")
 
-        if hrp and hum and hum.Health > 0 and isInAimDistance(pl) then
-            local dist = (hrp.Position - lpHRP.Position).Magnitude
-            if dist < closestDist then
-                closestDist = dist
-                closest = pl
-            end
-        end
-    end
-end
+	        if hrp and hum and hum.Health > 0 and isInAimDistance(pl) then
+	            local dist = (hrp.Position - lpHRP.Position).Magnitude
+	            if dist < closestDist then
+	                closestDist = dist
+	                closest = pl
+	            end
+	        end
+	    end
+	end
 
-return closest
+	return closest
 end
 
 local function getClosestNPC(lpHRP)
@@ -541,7 +542,7 @@ local function applyHighlight(targetModel, targetType)
     currentHighlight = hl  
     currentTargetType = targetType
 
-    VSkillModule:CheckVSkillUsage(SilentAimModule)
+    -- VSkillModule đã bị xoá theo yêu cầu; không gọi CheckVSkillUsage ở đây.
 end
 
 local function clearHighlight()
@@ -792,7 +793,7 @@ if not isNotValidCondition() then
                         if ok and type(MouseData) == "table" then  
                             MouseData.Hit = targetCFrame  
                             MouseData.Target = nil  
-                        end  
+                        end
                     end  
                 end  
             end  
@@ -1366,7 +1367,7 @@ RunService.RenderStepped:Connect(function()
     distText.Visible = true
 end)
 
--- 🔥 AUTO START AIM PLAYER
+--  🔥 AUTO START AIM PLAYER
 task.spawn(function()
     task.wait(0.1)
     if SilentAimPlayersEnabled then
