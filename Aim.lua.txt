@@ -689,7 +689,6 @@ spawn(function()
             local Method = (getnamecallmethod and getnamecallmethod():lower()) or ""
 
             if tostring(self) == "RemoteEvent" and Method == "fireserver" then
-
                 if typeof(V1) == "Vector3" then
                     if SilentAimPlayersEnabled and PlayersPosition then
                         return OldHook(self, PlayersPosition, V2, ...)
@@ -707,7 +706,6 @@ spawn(function()
 					end
 				end   
             elseif Method == "invokeserver" then  
-
 	            if isValidCondition() then
 	                if type(V1) == "string" and table.find(Skills, V1) then  
 	                    if SilentAimPlayersEnabled and PlayersPosition then  
